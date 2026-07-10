@@ -4,9 +4,13 @@ import MetaPixel from "@/components/MetaPixel";
 import { getSettings } from "@/lib/settings";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const settings = await getSettings();
+  // Repli statique si la BDD est indisponible (ex. prérendu au build).
+  let companyName = "RDV Paysagiste";
+  try {
+    companyName = (await getSettings()).companyName;
+  } catch {}
   return {
-    title: `${settings.companyName} — RDV devis en ligne`,
+    title: `${companyName} — RDV devis en ligne`,
     description:
       "Réservez votre rendez-vous de devis paysagiste en moins de 60 secondes. Créneaux en temps réel, confirmation immédiate par SMS.",
   };

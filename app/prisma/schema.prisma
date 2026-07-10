@@ -1,10 +1,11 @@
-// Prisma schema — SQLite en dev, remplacer provider par "postgresql" en production.
+// Prisma schema — PostgreSQL (Neon, Supabase, ou local).
+// Pour du dev rapide sans Postgres : provider = "sqlite" et DATABASE_URL="file:./dev.db".
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
