@@ -1,0 +1,93 @@
+// Prisma schema — SQLite en dev, remplacer provider par "postgresql" en production.
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Réglages globaux (ligne unique, id = "main").
+// Les champs *Json contiennent du JSON sérialisé (compatibilité SQLite).
+model Settings {
+  id                String   @id @default("main")
+  companyName       String   @default("Les Jardins Verts")
+  companyPhone      String   @default("06 00 00 00 00")
+  companyEmail      String   @default("contact@example.com")
+  baseAddress       String   @default("")
+  basePostalCode    String   @default("")
+  logoUrl           String   @default("")
+  primaryColor      String   @default("#347030")
+  // "postal" = liste de codes postaux, "radius" = rayon km autour de baseAddress
+  zoneMode          String   @default("postal")
+  postalCodesJson   String   @default("[]")
+  radiusKm          Int      @default(30)
+  baseLat           Float?
+  baseLng           Float?
+  visitDurationMin  Int      @default(30)
+  bufferMin         Int      @default(15)
+  minNoticeHours    Int      @default(12)
+  maxDaysAhead      Int      @default(21)
+  // Horaires d'ouverture par jour: {"1":{"enabled":true,"start":"08:00","end":"18:00"}, ...} (1 = lundi)
+  openingHoursJson  String   @default("")
+  // Congés / indisponibilités: [{"from":"2026-08-01","to":"2026-08-15","label":"Congés"}]
+  daysOffJson       String   @default("[]")
+  // Modèles de messages ({{prenom}}, {{date}}, {{heure}}, {{adresse}}, {{entreprise}}, {{telephone}}, {{lien_annulation}})
+  smsConfirmation   String   @default("")
+  smsReminder24h    String   @default("")
+  smsReminder1h     String   @default("")
+  emailSubject      String   @default("")
+  emailBody         String   @default("")
+  // Connexion Google Calendar (OAuth 2.0)
+  googleRefreshToken String  @default("")
+  googleAccessToken  String  @default("")
+  googleTokenExpiry  DateTime?
+  googleCalendarId   String  @default("primary")
+  googleEmail        String  @default("")
+  updatedAt         DateTime @updatedAt
+}
+
+model Booking {
+  id             String    @id @default(cuid())
+  createdAt      DateTime  @default(now())
+  firstName      String
+  lastName       String
+  phone          String
+  email          String
+  address        String
+  postalCode     String
+  city           String    @default("")
+  lat            Float?
+  lng            Float?
+  projectType    String // tonte | creation | terrasse | cloture | elagage | autre
+  description    String    @default("")
+  startAt        DateTime
+  endAt          DateTime
+  status         String    @default("a_faire") // a_faire | devis_envoye | gagne | perdu | annule
+  cancelToken    String    @unique @default(cuid())
+  googleEventId  String    @default("")
+  reminder24Sent Boolean   @default(false)
+  reminder1hSent Boolean   @default(false)
+  cancelledAt    DateTime?
+  photos         Photo[]
+}
+
+model Photo {
+  id        String  @id @default(cuid())
+  bookingId String
+  booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  // Data URL base64 (MVP). En production : URL S3/Cloudinary.
+  dataUrl   String
+}
+
+// Prospects hors zone d'intervention (formulaire de contact)
+model Lead {
+  id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
+  name       String
+  phone      String
+  email      String   @default("")
+  postalCode String
+  message    String   @default("")
+}
