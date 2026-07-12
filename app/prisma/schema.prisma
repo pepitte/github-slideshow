@@ -13,7 +13,7 @@ datasource db {
 // Les champs *Json contiennent du JSON sérialisé (compatibilité SQLite).
 model Settings {
   id                String   @id @default("main")
-  companyName       String   @default("Les Jardins Verts")
+  companyName       String   @default("Arboris Paysage")
   companyPhone      String   @default("06 00 00 00 00")
   companyEmail      String   @default("contact@example.com")
   baseAddress       String   @default("")

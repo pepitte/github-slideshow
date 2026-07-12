@@ -5,7 +5,7 @@ import { getSettings } from "@/lib/settings";
 
 export async function generateMetadata(): Promise<Metadata> {
   // Repli statique si la BDD est indisponible (ex. prérendu au build).
-  let companyName = "RDV Paysagiste";
+  let companyName = "Arboris Paysage";
   try {
     companyName = (await getSettings()).companyName;
   } catch {}
