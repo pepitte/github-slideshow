@@ -1,7 +1,24 @@
+import fs from "fs";
+import path from "path";
 import BookingWizard from "@/components/BookingWizard";
 import { getSettings } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
+
+/** Photos de réalisations : déposez vos images dans app/public/realisations/ (3 max affichées). */
+function getGalleryPhotos(): string[] {
+  try {
+    const dir = path.join(process.cwd(), "public", "realisations");
+    return fs
+      .readdirSync(dir)
+      .filter((f) => /\.(jpe?g|png|webp)$/i.test(f))
+      .sort()
+      .slice(0, 3)
+      .map((f) => `/realisations/${f}`);
+  } catch {
+    return [];
+  }
+}
 
 const REVIEWS = [
   { name: "Marie L.", text: "Devis rapide, jardin transformé en une semaine. Je recommande !" },
@@ -17,6 +34,7 @@ const STEPS = [
 
 export default async function LandingPage() {
   const settings = await getSettings();
+  const galleryPhotos = getGalleryPhotos();
   return (
     <main className="mx-auto max-w-lg px-4 pb-16 sm:max-w-2xl">
       {/* En-tête */}
@@ -54,20 +72,37 @@ export default async function LandingPage() {
       </section>
 
       {/* Réalisations */}
-      <section className="grid grid-cols-3 gap-2 py-4">
-        {["🌳", "🪴", "🏡"].map((emoji, i) => (
-          <div
-            key={i}
-            className="flex aspect-square items-center justify-center rounded-2xl bg-gradient-to-br from-leaf-100 to-leaf-200 text-5xl"
-            aria-hidden
-          >
-            {emoji}
-          </div>
-        ))}
-      </section>
-      <p className="pb-4 text-center text-xs text-leaf-800/50">
-        Remplacez ces vignettes par vos photos de réalisations depuis l&apos;espace admin.
-      </p>
+      {galleryPhotos.length > 0 ? (
+        <section className="grid grid-cols-3 gap-2 py-4">
+          {galleryPhotos.map((src) => (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              key={src}
+              src={src}
+              alt="Réalisation Arboris Paysage"
+              className="aspect-square w-full rounded-2xl object-cover"
+            />
+          ))}
+        </section>
+      ) : (
+        <>
+          <section className="grid grid-cols-3 gap-2 py-4">
+            {["🌳", "🪴", "🏡"].map((emoji, i) => (
+              <div
+                key={i}
+                className="flex aspect-square items-center justify-center rounded-2xl bg-gradient-to-br from-leaf-100 to-leaf-200 text-5xl"
+                aria-hidden
+              >
+                {emoji}
+              </div>
+            ))}
+          </section>
+          <p className="pb-4 text-center text-xs text-leaf-800/50">
+            Déposez vos photos de réalisations dans app/public/realisations/ pour
+            remplacer ces vignettes.
+          </p>
+        </>
+      )}
 
       {/* Comment ça marche */}
       <section className="space-y-3 py-4">
