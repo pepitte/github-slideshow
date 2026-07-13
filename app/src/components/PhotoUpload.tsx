@@ -19,9 +19,11 @@ async function compressImage(file: File): Promise<string> {
 export default function PhotoUpload({
   photos,
   onChange,
+  label = `Photos du terrain (facultatif, ${MAX_PHOTOS} max)`,
 }: {
   photos: string[];
   onChange: (photos: string[]) => void;
+  label?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -43,7 +45,7 @@ export default function PhotoUpload({
 
   return (
     <div>
-      <span className="label">Photos du terrain (facultatif, {MAX_PHOTOS} max)</span>
+      <span className="label">{label}</span>
       <div className="flex flex-wrap gap-3">
         {photos.map((src, i) => (
           <div key={i} className="relative">

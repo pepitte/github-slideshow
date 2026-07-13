@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import BookingWizard from "@/components/BookingWizard";
 import { getSettings } from "@/lib/settings";
+import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
@@ -34,7 +35,9 @@ const STEPS = [
 
 export default async function LandingPage() {
   const settings = await getSettings();
-  const galleryPhotos = getGalleryPhotos();
+  // Priorité aux photos gérées depuis l'admin, sinon fichiers de public/realisations/.
+  const dbPhotos = await prisma.galleryPhoto.findMany({ orderBy: { sort: "asc" }, take: 3 });
+  const galleryPhotos = dbPhotos.length > 0 ? dbPhotos.map((p) => p.dataUrl) : getGalleryPhotos();
   return (
     <main className="mx-auto max-w-lg px-4 pb-16 sm:max-w-2xl">
       {/* En-tête */}
@@ -98,8 +101,8 @@ export default async function LandingPage() {
             ))}
           </section>
           <p className="pb-4 text-center text-xs text-leaf-800/50">
-            Déposez vos photos de réalisations dans app/public/realisations/ pour
-            remplacer ces vignettes.
+            Ajoutez vos photos de réalisations depuis l&apos;espace admin (Paramètres)
+            pour remplacer ces vignettes.
           </p>
         </>
       )}

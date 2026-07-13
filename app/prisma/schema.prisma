@@ -1,5 +1,5 @@
 // Prisma schema — PostgreSQL (Neon, Supabase, ou local).
-// Pour du dev rapide sans Postgres : provider = "sqlite" et DATABASE_URL="file:./dev.db".
+// Pour du dev rapide sans Postgres : provider = "postgresql" et DATABASE_URL="file:./dev.db".
 generator client {
   provider = "prisma-client-js"
 }
@@ -80,6 +80,14 @@ model Photo {
   booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   // Data URL base64 (MVP). En production : URL S3/Cloudinary.
   dataUrl   String
+}
+
+// Photos de réalisations affichées sur la landing (gérées depuis l'admin)
+model GalleryPhoto {
+  id      String @id @default(cuid())
+  sort    Int    @default(0)
+  // Data URL base64 (MVP). En production : URL S3/Cloudinary.
+  dataUrl String
 }
 
 // Prospects hors zone d'intervention (formulaire de contact)

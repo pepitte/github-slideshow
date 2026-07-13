@@ -3,6 +3,7 @@
 // Paramètres gérant : entreprise, Google Agenda, horaires, zones, messages.
 import { useEffect, useState } from "react";
 import AdminNav from "../AdminNav";
+import PhotoUpload from "@/components/PhotoUpload";
 
 type OpeningDay = { enabled: boolean; start: string; end: string };
 type DayOff = { from: string; to: string; label?: string };
@@ -41,6 +42,29 @@ export default function AdminSettingsPage() {
   const [daysOff, setDaysOff] = useState<DayOff[]>([]);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [gallery, setGallery] = useState<string[]>([]);
+  const [gallerySaved, setGallerySaved] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/admin/gallery")
+      .then((r) => (r.ok ? r.json() : { photos: [] }))
+      .then((data) => setGallery(data.photos ?? []))
+      .catch(() => {});
+  }, []);
+
+  async function updateGallery(photos: string[]) {
+    setGallery(photos);
+    setGallerySaved(false);
+    const res = await fetch("/api/admin/gallery", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ photos }),
+    });
+    if (res.ok) {
+      setGallerySaved(true);
+      setTimeout(() => setGallerySaved(false), 2500);
+    }
+  }
 
   useEffect(() => {
     fetch("/api/admin/settings")
@@ -169,6 +193,19 @@ export default function AdminSettingsPage() {
             <label className="label">Adresse de départ (dépôt / siège, pour le mode rayon)</label>
             <input className="input" value={s.baseAddress} onChange={(e) => set({ baseAddress: e.target.value })} />
           </div>
+        </section>
+
+        {/* Photos de réalisations */}
+        <section className="card space-y-3">
+          <h2 className="font-bold">
+            📸 Photos de réalisations
+            {gallerySaved && <span className="ml-2 text-sm font-semibold text-leaf-700">✓ Enregistré</span>}
+          </h2>
+          <p className="text-sm text-leaf-800/70">
+            Affichées en vitrine sur la page de réservation. Ajoutez-les directement
+            depuis votre téléphone — elles sont compressées et publiées immédiatement.
+          </p>
+          <PhotoUpload photos={gallery} onChange={updateGallery} label="3 photos maximum" />
         </section>
 
         {/* Zone d'intervention */}
