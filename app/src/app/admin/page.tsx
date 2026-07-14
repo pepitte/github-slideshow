@@ -31,7 +31,7 @@ const STATUS_OPTIONS = [
 ];
 
 const PROJECT_LABELS: Record<string, string> = {
-  entretien: "Entretien général de jardin",
+  entretien: "Entretien de jardin général",
   taille_haie: "Taille de haie",
   debroussaillage: "Débroussaillage",
   contrat_annuel: "Contrat d'entretien à l'année",

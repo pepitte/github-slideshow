@@ -10,11 +10,11 @@ import SlotPicker from "./SlotPicker";
 import { trackMetaEvent } from "./MetaPixel";
 
 const PROJECT_TYPES = [
-  { id: "entretien", label: "Entretien général de jardin", emoji: "🌱" },
-  { id: "taille_haie", label: "Taille de haie", emoji: "✂️" },
-  { id: "debroussaillage", label: "Débroussaillage", emoji: "🌿" },
-  { id: "contrat_annuel", label: "Contrat d'entretien à l'année", emoji: "🗓️" },
-  { id: "autre", label: "Autre projet", emoji: "✨" },
+  { id: "entretien", label: "Entretien de jardin général" },
+  { id: "taille_haie", label: "Taille de haie" },
+  { id: "debroussaillage", label: "Débroussaillage" },
+  { id: "contrat_annuel", label: "Contrat d'entretien à l'année" },
+  { id: "autre", label: "Autre projet" },
 ];
 
 export default function BookingWizard({ companyPhone }: { companyPhone: string }) {
@@ -194,7 +194,6 @@ export default function BookingWizard({ companyPhone }: { companyPhone: string }
                     : "border-leaf-200 bg-white text-leaf-900"
                 }`}
               >
-                <span className="text-xl">{t.emoji}</span>
                 {t.label}
               </button>
             ))}
