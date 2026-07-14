@@ -6,6 +6,16 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
+/** Logo : réglé depuis l'admin, sinon fichier app/public/logo.png|jpg|webp s'il existe. */
+function getLogoFile(): string {
+  for (const name of ["logo.png", "logo.jpg", "logo.jpeg", "logo.webp"]) {
+    try {
+      if (fs.existsSync(path.join(process.cwd(), "public", name))) return `/${name}`;
+    } catch {}
+  }
+  return "";
+}
+
 /** Photos de réalisations : déposez vos images dans app/public/realisations/ (3 max affichées). */
 function getGalleryPhotos(): string[] {
   try {
@@ -38,15 +48,16 @@ export default async function LandingPage() {
   // Priorité aux photos gérées depuis l'admin, sinon fichiers de public/realisations/.
   const dbPhotos = await prisma.galleryPhoto.findMany({ orderBy: { sort: "asc" }, take: 3 });
   const galleryPhotos = dbPhotos.length > 0 ? dbPhotos.map((p) => p.dataUrl) : getGalleryPhotos();
+  const logoUrl = settings.logoUrl || getLogoFile();
   return (
     <main className="mx-auto max-w-lg px-4 pb-16 sm:max-w-2xl">
       {/* En-tête */}
       <header className="flex items-center justify-between py-4">
         <div className="flex items-center gap-2">
-          {settings.logoUrl ? (
+          {logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={settings.logoUrl}
+              src={logoUrl}
               alt={settings.companyName}
               className="h-11 w-auto max-w-[190px] object-contain"
             />
