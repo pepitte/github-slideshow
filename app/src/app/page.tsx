@@ -38,9 +38,12 @@ const REVIEWS = [
 ];
 
 const STEPS = [
-  { emoji: "📝", title: "Décrivez votre projet", text: "2 ou 3 questions, ajoutez des photos si vous voulez." },
-  { emoji: "📅", title: "Choisissez un créneau", text: "Uniquement nos vraies disponibilités, en temps réel." },
-  { emoji: "✅", title: "C'est confirmé", text: "SMS immédiat + rappels avant le rendez-vous." },
+  {
+    title: "Décrivez votre projet",
+    text: "Décrivez-nous vos besoins et ajoutez quelques photos afin de nous donner un premier aperçu de votre projet.",
+  },
+  { title: "Choisissez un créneau", text: "Uniquement nos vraies disponibilités, en temps réel." },
+  { title: "C'est confirmé", text: "SMS immédiat + rappels avant le rendez-vous." },
 ];
 
 export default async function LandingPage() {
@@ -128,7 +131,9 @@ export default async function LandingPage() {
       <section className="space-y-3 py-4">
         {STEPS.map((s, i) => (
           <div key={i} className="card flex items-start gap-4 py-4">
-            <span className="text-2xl" aria-hidden>{s.emoji}</span>
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-leaf-600 text-sm font-bold text-white">
+              {i + 1}
+            </span>
             <div>
               <h2 className="font-semibold">{s.title}</h2>
               <p className="text-sm text-leaf-800/70">{s.text}</p>
