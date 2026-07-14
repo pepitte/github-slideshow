@@ -1,9 +1,20 @@
 "use client";
 
 // Paramètres gérant : entreprise, Google Agenda, horaires, zones, messages.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import AdminNav from "../AdminNav";
 import PhotoUpload from "@/components/PhotoUpload";
+
+/** Redimensionne le logo côté client (max 600 px de large, PNG). */
+async function fileToLogoDataUrl(file: File): Promise<string> {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, 600 / bitmap.width);
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL("image/png");
+}
 
 type OpeningDay = { enabled: boolean; start: string; end: string };
 type DayOff = { from: string; to: string; label?: string };
@@ -44,6 +55,7 @@ export default function AdminSettingsPage() {
   const [saved, setSaved] = useState(false);
   const [gallery, setGallery] = useState<string[]>([]);
   const [gallerySaved, setGallerySaved] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetch("/api/admin/gallery")
@@ -185,8 +197,35 @@ export default function AdminSettingsPage() {
               <input className="input" value={s.companyEmail} onChange={(e) => set({ companyEmail: e.target.value })} />
             </div>
             <div>
-              <label className="label">URL du logo</label>
-              <input className="input" placeholder="https://…/logo.png" value={s.logoUrl} onChange={(e) => set({ logoUrl: e.target.value })} />
+              <label className="label">Logo</label>
+              {s.logoUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={s.logoUrl} alt="Logo" className="mb-2 h-12 w-auto rounded-lg bg-white object-contain" />
+              )}
+              <div className="flex gap-2">
+                <button type="button" className="btn-secondary" onClick={() => logoInputRef.current?.click()}>
+                  {s.logoUrl ? "Changer…" : "Choisir une image…"}
+                </button>
+                {s.logoUrl && (
+                  <button type="button" className="btn-secondary" onClick={() => set({ logoUrl: "" })}>
+                    Retirer
+                  </button>
+                )}
+              </div>
+              <input
+                ref={logoInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (file) set({ logoUrl: await fileToLogoDataUrl(file) });
+                  e.target.value = "";
+                }}
+              />
+              <p className="mt-1 text-xs text-leaf-800/60">
+                Pensez à cliquer « Enregistrer les paramètres » en bas de page.
+              </p>
             </div>
           </div>
           <div>

@@ -45,11 +45,17 @@ export default async function LandingPage() {
         <div className="flex items-center gap-2">
           {settings.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={settings.logoUrl} alt={settings.companyName} className="h-9 w-9 rounded-full object-cover" />
+            <img
+              src={settings.logoUrl}
+              alt={settings.companyName}
+              className="h-11 w-auto max-w-[190px] object-contain"
+            />
           ) : (
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-leaf-600 text-lg">🌿</span>
+            <>
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-leaf-600 text-lg">🌿</span>
+              <span className="font-bold text-leaf-900">{settings.companyName}</span>
+            </>
           )}
-          <span className="font-bold text-leaf-900">{settings.companyName}</span>
         </div>
         <a href={`tel:${settings.companyPhone.replace(/\s/g, "")}`} className="text-sm font-semibold text-leaf-700">
           {settings.companyPhone}
