@@ -3,7 +3,7 @@
 // Ajout de 1 à 3 photos, compressées côté client (canvas) avant envoi en base64.
 import { useRef } from "react";
 
-const MAX_PHOTOS = 3;
+const MAX_PHOTOS = 6;
 const MAX_DIMENSION = 1280;
 
 async function compressImage(file: File): Promise<string> {

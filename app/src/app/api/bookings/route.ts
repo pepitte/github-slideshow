@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
   const projectType = String(body.projectType ?? "");
   const description = String(body.description ?? "").slice(0, 2000);
   const startAtRaw = String(body.startAt ?? "");
-  const photos = Array.isArray(body.photos) ? (body.photos as string[]).slice(0, 3) : [];
+  const photos = Array.isArray(body.photos) ? (body.photos as string[]).slice(0, 6) : [];
 
   if (!firstName || !lastName || !phone || !email || !address || !postalCode) {
     return NextResponse.json({ error: "Champs obligatoires manquants" }, { status: 400 });
