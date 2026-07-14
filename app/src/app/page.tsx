@@ -40,7 +40,7 @@ const REVIEWS = [
 const STEPS = [
   {
     title: "Décrivez votre projet",
-    text: "Décrivez-nous vos besoins et ajoutez quelques photos afin de nous donner un premier aperçu de votre projet.",
+    text: "Expliquez-nous vos besoins en quelques mots et ajoutez des photos.",
   },
   { title: "Choisissez un créneau", text: "Uniquement nos vraies disponibilités, en temps réel." },
   { title: "C'est confirmé", text: "SMS immédiat + rappels avant le rendez-vous." },
