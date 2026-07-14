@@ -31,11 +31,10 @@ const STATUS_OPTIONS = [
 ];
 
 const PROJECT_LABELS: Record<string, string> = {
-  tonte: "Tonte / entretien",
-  creation: "Création espace vert",
-  terrasse: "Terrasse",
-  cloture: "Clôture",
-  elagage: "Élagage",
+  entretien: "Entretien général de jardin",
+  taille_haie: "Taille de haie",
+  debroussaillage: "Débroussaillage",
+  contrat_annuel: "Contrat d'entretien à l'année",
   autre: "Autre",
 };
 

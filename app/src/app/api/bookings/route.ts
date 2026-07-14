@@ -9,7 +9,7 @@ import { sendConfirmation } from "@/lib/notifications";
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
-const PROJECT_TYPES = ["tonte", "creation", "terrasse", "cloture", "elagage", "autre"];
+const PROJECT_TYPES = ["entretien", "taille_haie", "debroussaillage", "contrat_annuel", "autre"];
 
 // POST /api/bookings — crée la réservation, l'événement Google, et envoie SMS + email.
 export async function POST(req: NextRequest) {

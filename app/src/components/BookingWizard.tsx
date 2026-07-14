@@ -10,11 +10,10 @@ import SlotPicker from "./SlotPicker";
 import { trackMetaEvent } from "./MetaPixel";
 
 const PROJECT_TYPES = [
-  { id: "tonte", label: "Tonte / entretien", emoji: "🌱" },
-  { id: "creation", label: "Création d'espace vert", emoji: "🌳" },
-  { id: "terrasse", label: "Terrasse", emoji: "🪵" },
-  { id: "cloture", label: "Clôture", emoji: "🚧" },
-  { id: "elagage", label: "Élagage", emoji: "🌲" },
+  { id: "entretien", label: "Entretien général de jardin", emoji: "🌱" },
+  { id: "taille_haie", label: "Taille de haie", emoji: "✂️" },
+  { id: "debroussaillage", label: "Débroussaillage", emoji: "🌿" },
+  { id: "contrat_annuel", label: "Contrat d'entretien à l'année", emoji: "🗓️" },
   { id: "autre", label: "Autre projet", emoji: "✨" },
 ];
 
