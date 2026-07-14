@@ -24,7 +24,7 @@ function getGalleryPhotos(): string[] {
       .readdirSync(dir)
       .filter((f) => /\.(jpe?g|png|webp)$/i.test(f))
       .sort()
-      .slice(0, 3)
+      .slice(0, 6)
       .map((f) => `/realisations/${f}`);
   } catch {
     return [];
@@ -49,7 +49,7 @@ const STEPS = [
 export default async function LandingPage() {
   const settings = await getSettings();
   // Priorité aux photos gérées depuis l'admin, sinon fichiers de public/realisations/.
-  const dbPhotos = await prisma.galleryPhoto.findMany({ orderBy: { sort: "asc" }, take: 3 });
+  const dbPhotos = await prisma.galleryPhoto.findMany({ orderBy: { sort: "asc" }, take: 6 });
   const galleryPhotos = dbPhotos.length > 0 ? dbPhotos.map((p) => p.dataUrl) : getGalleryPhotos();
   const logoUrl = settings.logoUrl || getLogoFile();
   return (

@@ -20,10 +20,12 @@ export default function PhotoUpload({
   photos,
   onChange,
   label = `Photos du terrain (facultatif, ${MAX_PHOTOS} max)`,
+  maxPhotos = MAX_PHOTOS,
 }: {
   photos: string[];
   onChange: (photos: string[]) => void;
   label?: string;
+  maxPhotos?: number;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -31,7 +33,7 @@ export default function PhotoUpload({
     if (!files) return;
     const next = [...photos];
     for (const file of Array.from(files)) {
-      if (next.length >= MAX_PHOTOS) break;
+      if (next.length >= maxPhotos) break;
       if (!file.type.startsWith("image/")) continue;
       try {
         next.push(await compressImage(file));
@@ -65,7 +67,7 @@ export default function PhotoUpload({
             </button>
           </div>
         ))}
-        {photos.length < MAX_PHOTOS && (
+        {photos.length < maxPhotos && (
           <button
             type="button"
             onClick={() => inputRef.current?.click()}

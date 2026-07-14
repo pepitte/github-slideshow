@@ -244,7 +244,7 @@ export default function AdminSettingsPage() {
             Affichées en vitrine sur la page de réservation. Ajoutez-les directement
             depuis votre téléphone — elles sont compressées et publiées immédiatement.
           </p>
-          <PhotoUpload photos={gallery} onChange={updateGallery} label="3 photos maximum" />
+          <PhotoUpload photos={gallery} onChange={updateGallery} label="6 photos maximum" maxPhotos={6} />
         </section>
 
         {/* Zone d'intervention */}

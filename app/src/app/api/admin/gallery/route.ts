@@ -4,7 +4,7 @@ import { isAdminAuthenticated } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
-const MAX_PHOTOS = 3;
+const MAX_PHOTOS = 6;
 
 export async function GET() {
   if (!isAdminAuthenticated()) {
