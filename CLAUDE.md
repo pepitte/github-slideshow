@@ -47,6 +47,8 @@ Docs : `app/ARCHITECTURE.md`.
 - Types de projet (sans emojis) : Entretien de jardin général, Taille de haie,
   Débroussaillage, Contrat d'entretien à l'année, Autre projet.
 - Photos du terrain (prospect) : 6 max.
+- Horaires par défaut : lundi-vendredi **16h30 → 20h00** (Thomas fait les
+  visites devis en fin de journée). Modifiable dans l'admin.
 
 ## Démo interactive (artifact)
 

@@ -9,11 +9,11 @@ export type OpeningHours = Record<
 export type DayOff = { from: string; to: string; label?: string };
 
 export const DEFAULT_OPENING_HOURS: OpeningHours = {
-  "1": { enabled: true, start: "08:00", end: "18:00" },
-  "2": { enabled: true, start: "08:00", end: "18:00" },
-  "3": { enabled: true, start: "08:00", end: "18:00" },
-  "4": { enabled: true, start: "08:00", end: "18:00" },
-  "5": { enabled: true, start: "08:00", end: "18:00" },
+  "1": { enabled: true, start: "16:30", end: "20:00" },
+  "2": { enabled: true, start: "16:30", end: "20:00" },
+  "3": { enabled: true, start: "16:30", end: "20:00" },
+  "4": { enabled: true, start: "16:30", end: "20:00" },
+  "5": { enabled: true, start: "16:30", end: "20:00" },
   "6": { enabled: false, start: "09:00", end: "12:00" },
   "7": { enabled: false, start: "09:00", end: "12:00" },
 };
