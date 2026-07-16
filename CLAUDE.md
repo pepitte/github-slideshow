@@ -51,6 +51,8 @@ Docs : `app/ARCHITECTURE.md`.
   visites devis en fin de journée). Modifiable dans l'admin.
 - Créneaux affichés **toutes les 30 min** (pas = durée de visite) ; le buffer
   trajet (15 min) bloque seulement les créneaux voisins d'un RDV pris.
+- Pas de section d'avis clients (retirée) ; seule preuve sociale : la ligne
+  « Plus de 100 clients satisfaits » sous le bouton du hero.
 
 ## Démo interactive (artifact)
 
