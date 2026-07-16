@@ -48,26 +48,21 @@ export default async function LandingPage() {
   const logoUrl = settings.logoUrl || getLogoFile();
   return (
     <main className="mx-auto max-w-lg px-4 pb-16 sm:max-w-2xl">
-      {/* En-tête */}
-      <header className="flex items-center justify-between py-4">
-        <div className="flex items-center gap-2">
-          {logoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={logoUrl}
-              alt={settings.companyName}
-              className="h-11 w-auto max-w-[190px] object-contain"
-            />
-          ) : (
-            <>
-              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-leaf-600 text-lg">🌿</span>
-              <span className="font-bold text-leaf-900">{settings.companyName}</span>
-            </>
-          )}
-        </div>
-        <a href={`tel:${settings.companyPhone.replace(/\s/g, "")}`} className="text-sm font-semibold text-leaf-700">
-          {settings.companyPhone}
-        </a>
+      {/* En-tête : logo centré */}
+      <header className="flex items-center justify-center py-4">
+        {logoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={logoUrl}
+            alt={settings.companyName}
+            className="h-14 w-auto max-w-[230px] object-contain"
+          />
+        ) : (
+          <div className="flex items-center gap-2">
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-leaf-600 text-lg">🌿</span>
+            <span className="font-bold text-leaf-900">{settings.companyName}</span>
+          </div>
+        )}
       </header>
 
       {/* Hero */}
@@ -141,7 +136,17 @@ export default async function LandingPage() {
         <BookingWizard companyPhone={settings.companyPhone} />
       </section>
 
-      <footer className="pt-8 text-center text-xs text-leaf-800/50">
+      <p className="pt-6 text-center text-sm text-leaf-800/80">
+        Une question ?{" "}
+        <a
+          href={`tel:${settings.companyPhone.replace(/\s/g, "")}`}
+          className="font-semibold text-leaf-700"
+        >
+          {settings.companyPhone}
+        </a>
+      </p>
+
+      <footer className="pt-6 text-center text-xs text-leaf-800/50">
         © {new Date().getFullYear()} {settings.companyName} — {settings.companyPhone}
         <br />
         <a href="/admin" className="underline">Espace gérant</a>
