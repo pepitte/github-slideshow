@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import SiteHeader from "@/components/SiteHeader";
 import { prisma } from "@/lib/prisma";
 import { getSettings } from "@/lib/settings";
 import { formatDateFr, formatTimeFr } from "@/lib/dates";
@@ -12,8 +13,9 @@ export default async function ConfirmationPage({ params }: { params: { id: strin
   const settings = await getSettings();
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-lg flex-col items-center justify-center px-4 py-10 text-center">
-      <span className="flex h-16 w-16 items-center justify-center rounded-full bg-leaf-600 text-3xl text-white">
+    <main className="mx-auto flex min-h-screen max-w-lg flex-col items-center justify-center px-4 py-6 text-center">
+      <SiteHeader />
+      <span className="mt-4 flex h-16 w-16 items-center justify-center rounded-full bg-leaf-600 text-3xl text-white">
         ✓
       </span>
       <h1 className="mt-5 text-2xl font-extrabold">Rendez-vous confirmé !</h1>

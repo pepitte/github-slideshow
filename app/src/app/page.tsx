@@ -1,20 +1,11 @@
 import fs from "fs";
 import path from "path";
 import BookingWizard from "@/components/BookingWizard";
+import SiteHeader from "@/components/SiteHeader";
 import { getSettings } from "@/lib/settings";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
-
-/** Logo : réglé depuis l'admin, sinon fichier app/public/logo.png|jpg|webp s'il existe. */
-function getLogoFile(): string {
-  for (const name of ["logo.png", "logo.jpg", "logo.jpeg", "logo.webp"]) {
-    try {
-      if (fs.existsSync(path.join(process.cwd(), "public", name))) return `/${name}`;
-    } catch {}
-  }
-  return "";
-}
 
 /** Photos de réalisations : déposez vos images dans app/public/realisations/ (3 max affichées). */
 function getGalleryPhotos(): string[] {
@@ -45,25 +36,9 @@ export default async function LandingPage() {
   // Priorité aux photos gérées depuis l'admin, sinon fichiers de public/realisations/.
   const dbPhotos = await prisma.galleryPhoto.findMany({ orderBy: { sort: "asc" }, take: 6 });
   const galleryPhotos = dbPhotos.length > 0 ? dbPhotos.map((p) => p.dataUrl) : getGalleryPhotos();
-  const logoUrl = settings.logoUrl || getLogoFile();
   return (
     <main className="mx-auto max-w-lg px-4 pb-16 sm:max-w-2xl">
-      {/* En-tête : logo centré */}
-      <header className="flex items-center justify-center py-4">
-        {logoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={logoUrl}
-            alt={settings.companyName}
-            className="h-14 w-auto max-w-[230px] object-contain"
-          />
-        ) : (
-          <div className="flex items-center gap-2">
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-leaf-600 text-lg">🌿</span>
-            <span className="font-bold text-leaf-900">{settings.companyName}</span>
-          </div>
-        )}
-      </header>
+      <SiteHeader />
 
       {/* Hero */}
       <section className="py-6 text-center">
