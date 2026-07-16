@@ -39,7 +39,7 @@ export default function CancelActions({
           ✓ Votre rendez-vous est annulé et le créneau a été libéré.
         </p>
         <Link href="/#reserver" className="btn-primary">
-          📅 Reprendre un nouveau rendez-vous
+          Reprendre un nouveau rendez-vous
         </Link>
       </div>
     );

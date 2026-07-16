@@ -80,7 +80,7 @@ export default async function LandingPage() {
           Confirmation immédiate par SMS.
         </p>
         <a href="#reserver" className="btn-primary mt-5">
-          📅 Réserver mon RDV devis gratuit
+          Réserver mon RDV devis gratuit
         </a>
         <p className="mt-4 text-sm font-medium text-leaf-800/70">
           Plus de 100 clients satisfaits
