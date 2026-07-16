@@ -53,6 +53,12 @@ Docs : `app/ARCHITECTURE.md`.
   trajet (15 min) bloque seulement les créneaux voisins d'un RDV pris.
 - Pas de section d'avis clients (retirée) ; seule preuve sociale : la ligne
   « Plus de 100 clients satisfaits » sous le bouton du hero.
+- Logo centré en haut de toutes les pages ; numéro déplacé sous la section
+  réservation (« Une question ? ») + pied de page. CTA sans emoji.
+- Mentions légales : nom légal **Arboris Paysage**, SIRET **914 126 230 00012**,
+  adresse **4 place Barbacane, 34360 Saint-Chinian** — page `/mentions-legales`.
+- RGPD : bannière de consentement obligatoire avant activation du pixel Meta
+  (composant MetaPixel), notice confidentialité à l'étape 2 du tunnel.
 
 ## Démo interactive (artifact)
 

@@ -266,6 +266,13 @@ export default function BookingWizard({ companyPhone }: { companyPhone: string }
             />
           </div>
           <AddressAutocomplete value={addr} onChange={setAddr} />
+          <p className="text-xs text-leaf-800/60">
+            Vos coordonnées servent uniquement à organiser votre rendez-vous
+            (confirmation et rappels par SMS/email).{" "}
+            <a href="/mentions-legales" className="underline" target="_blank">
+              Confidentialité
+            </a>
+          </p>
           {error && <p className="text-sm text-red-600">{error}</p>}
           <div className="flex flex-col gap-2 sm:flex-row">
             <button className="btn-secondary" onClick={() => setStep(1)}>← Retour</button>

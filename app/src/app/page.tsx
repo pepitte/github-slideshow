@@ -129,6 +129,8 @@ export default async function LandingPage() {
       <footer className="pt-6 text-center text-xs text-leaf-800/50">
         © {new Date().getFullYear()} {settings.companyName} — {settings.companyPhone}
         <br />
+        <a href="/mentions-legales" className="underline">Mentions légales & confidentialité</a>
+        {" · "}
         <a href="/admin" className="underline">Espace gérant</a>
       </footer>
     </main>
