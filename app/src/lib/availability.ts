@@ -23,7 +23,10 @@ export async function getAvailability(settings: Settings): Promise<DaySlots[]> {
   const daysOff = parseDaysOff(settings);
   const duration = settings.visitDurationMin;
   const buffer = settings.bufferMin;
-  const step = duration + buffer;
+  // Créneaux proposés au pas de la durée de visite (ex. toutes les 30 min).
+  // Le buffer n'espace pas l'affichage : il bloque les créneaux trop proches
+  // d'un RDV déjà pris (temps de trajet).
+  const step = duration;
 
   const startDay = todayParis();
   const rangeStart = new Date();

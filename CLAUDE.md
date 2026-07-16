@@ -49,6 +49,8 @@ Docs : `app/ARCHITECTURE.md`.
 - Photos du terrain (prospect) : 6 max.
 - Horaires par défaut : lundi-vendredi **16h30 → 20h00** (Thomas fait les
   visites devis en fin de journée). Modifiable dans l'admin.
+- Créneaux affichés **toutes les 30 min** (pas = durée de visite) ; le buffer
+  trajet (15 min) bloque seulement les créneaux voisins d'un RDV pris.
 
 ## Démo interactive (artifact)
 
