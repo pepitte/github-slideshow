@@ -31,12 +31,6 @@ function getGalleryPhotos(): string[] {
   }
 }
 
-const REVIEWS = [
-  { name: "Marie L.", text: "Devis rapide, jardin transformé en une semaine. Je recommande !" },
-  { name: "Karim B.", text: "Très pro, ponctuel, et la terrasse est magnifique." },
-  { name: "Sophie D.", text: "Prise de RDV en 1 minute sur mon téléphone, top." },
-];
-
 const STEPS = [
   {
     title: "Décrivez votre projet",
@@ -88,10 +82,9 @@ export default async function LandingPage() {
         <a href="#reserver" className="btn-primary mt-5">
           📅 Réserver mon RDV devis gratuit
         </a>
-        <div className="mt-4 flex items-center justify-center gap-1 text-sm text-leaf-800/70">
-          <span aria-hidden>⭐⭐⭐⭐⭐</span>
-          <span>4,9/5 — plus de 120 clients satisfaits</span>
-        </div>
+        <p className="mt-4 text-sm font-medium text-leaf-800/70">
+          Plus de 100 clients satisfaits
+        </p>
       </section>
 
       {/* Réalisations */}
@@ -146,19 +139,6 @@ export default async function LandingPage() {
       <section className="py-6">
         <h2 className="mb-4 text-center text-xl font-bold">Réservez votre visite devis</h2>
         <BookingWizard companyPhone={settings.companyPhone} />
-      </section>
-
-      {/* Avis */}
-      <section className="space-y-3 py-4">
-        <h2 className="text-center text-xl font-bold">Ils nous font confiance</h2>
-        {REVIEWS.map((r, i) => (
-          <blockquote key={i} className="card py-4">
-            <p className="text-sm text-leaf-900">“{r.text}”</p>
-            <footer className="mt-2 text-xs font-semibold text-leaf-700">
-              {r.name} <span aria-hidden>⭐⭐⭐⭐⭐</span>
-            </footer>
-          </blockquote>
-        ))}
       </section>
 
       <footer className="pt-8 text-center text-xs text-leaf-800/50">
