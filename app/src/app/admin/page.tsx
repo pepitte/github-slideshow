@@ -139,7 +139,7 @@ export default function AdminDashboard() {
                       {b.photos.map((p) => (
                         // eslint-disable-next-line @next/next/no-img-element
                         <a key={p.id} href={p.dataUrl} target="_blank" rel="noreferrer">
-                          <img src={p.dataUrl} alt="Photo du chantier" className="h-24 w-24 rounded-xl object-cover" />
+                          <img src={p.dataUrl} alt="Photo du chantier" loading="lazy" className="h-24 w-24 rounded-xl object-cover" />
                         </a>
                       ))}
                     </div>

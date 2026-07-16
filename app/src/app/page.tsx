@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import BookingWizard from "@/components/BookingWizard";
 import SiteHeader from "@/components/SiteHeader";
+import StickyCta from "@/components/StickyCta";
 import { getSettings } from "@/lib/settings";
 import { prisma } from "@/lib/prisma";
 
@@ -49,7 +50,7 @@ export default async function LandingPage() {
           Choisissez un créneau, on se déplace gratuitement pour évaluer votre projet.
           Confirmation immédiate par SMS.
         </p>
-        <a href="#reserver" className="btn-primary mt-5">
+        <a id="hero-cta" href="#reserver" className="btn-primary mt-5">
           Réserver mon RDV devis gratuit
         </a>
         <p className="mt-4 text-sm font-medium text-leaf-800/70">
@@ -66,6 +67,8 @@ export default async function LandingPage() {
               key={src}
               src={src}
               alt="Réalisation Arboris Paysage"
+              loading="lazy"
+              decoding="async"
               className="aspect-square w-full rounded-2xl object-cover"
             />
           ))}
@@ -120,6 +123,8 @@ export default async function LandingPage() {
           {settings.companyPhone}
         </a>
       </p>
+
+      <StickyCta />
 
       <footer className="pt-6 text-center text-xs text-leaf-800/50">
         © {new Date().getFullYear()} {settings.companyName} — {settings.companyPhone}
