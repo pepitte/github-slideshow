@@ -16,13 +16,13 @@ model Settings {
   companyName       String   @default("Arboris Paysage")
   companyPhone      String   @default("06 14 31 00 02")
   companyEmail      String   @default("contact@example.com")
-  baseAddress       String   @default("")
-  basePostalCode    String   @default("")
+  baseAddress       String   @default("4 place Barbacane, 34360 Saint-Chinian")
+  basePostalCode    String   @default("34360")
   logoUrl           String   @default("")
   primaryColor      String   @default("#347030")
   // "postal" = liste de codes postaux, "radius" = rayon km autour de baseAddress
   zoneMode          String   @default("postal")
-  postalCodesJson   String   @default("[]")
+  postalCodesJson   String   @default("[\"34\"]")
   radiusKm          Int      @default(30)
   baseLat           Float?
   baseLng           Float?

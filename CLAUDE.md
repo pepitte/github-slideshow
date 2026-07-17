@@ -57,6 +57,8 @@ Docs : `app/ARCHITECTURE.md`.
   réservation (« Une question ? ») + pied de page. CTA sans emoji.
 - Mentions légales : nom légal **Arboris Paysage**, SIRET **914 126 230 00012**,
   adresse **4 place Barbacane, 34360 Saint-Chinian** — page `/mentions-legales`.
+- Zone d'intervention par défaut : préfixe **34** (Hérault), adresse de base
+  34360 Saint-Chinian ; exemples démo/placeholders en 34, plus aucun exemple 44.
 - RGPD : bannière de consentement obligatoire avant activation du pixel Meta
   (composant MetaPixel), notice confidentialité à l'étape 2 du tunnel.
 

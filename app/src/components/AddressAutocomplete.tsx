@@ -91,7 +91,7 @@ export default function AddressAutocomplete({
           <input
             id="postalCode"
             className="input"
-            placeholder="44000"
+            placeholder="34360"
             inputMode="numeric"
             pattern="\d{5}"
             maxLength={5}
@@ -110,7 +110,7 @@ export default function AddressAutocomplete({
           <input
             id="city"
             className="input"
-            placeholder="Nantes"
+            placeholder="Saint-Chinian"
             autoComplete="address-level2"
             value={value.city}
             onChange={(e) => onChange({ ...value, city: e.target.value })}
