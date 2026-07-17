@@ -36,9 +36,6 @@ export default async function ConfirmationPage({ params }: { params: { id: strin
         Vous recevrez un rappel SMS 24 h et 1 h avant le rendez-vous. Un email avec
         l&apos;invitation calendrier (.ics) vous a également été envoyé.
       </p>
-      <Link href={`/annuler/${booking.cancelToken}`} className="mt-4 text-sm text-leaf-700 underline">
-        Annuler ou reporter ce rendez-vous
-      </Link>
       <Link href="/" className="btn-secondary mt-6">← Retour à l&apos;accueil</Link>
     </main>
   );
