@@ -13,7 +13,7 @@ export default async function CancelPage({ params }: { params: { token: string }
   return (
     <main className="mx-auto flex min-h-screen max-w-lg flex-col justify-center px-4 py-6">
       <SiteHeader />
-      <h1 className="mt-4 text-2xl font-extrabold">Annuler ou reporter</h1>
+      <h1 className="mt-4 text-2xl font-extrabold">Modifier ou annuler votre rendez-vous</h1>
       <div className="card mt-5 space-y-1">
         <p className="font-semibold">
           📅 {formatDateFr(booking.startAt)} à {formatTimeFr(booking.startAt)}

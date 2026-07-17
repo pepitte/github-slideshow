@@ -24,23 +24,26 @@ function timeLabel(iso: string): string {
 export default function SlotPicker({
   selected,
   onSelect,
+  token,
 }: {
   selected: string | null;
   onSelect: (iso: string) => void;
+  /** Lien d'annulation : exclut le RDV du client du calcul (report). */
+  token?: string;
 }) {
   const [days, setDays] = useState<DaySlots[] | null>(null);
   const [activeDay, setActiveDay] = useState<string | null>(null);
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    fetch("/api/availability")
+    fetch(`/api/availability${token ? `?token=${encodeURIComponent(token)}` : ""}`)
       .then((r) => r.json())
       .then((data) => {
         setDays(data.days ?? []);
         if (data.days?.length) setActiveDay(data.days[0].date);
       })
       .catch(() => setError(true));
-  }, []);
+  }, [token]);
 
   if (error) {
     return <p className="text-sm text-red-600">Impossible de charger les créneaux. Réessayez.</p>;

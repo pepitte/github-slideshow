@@ -17,8 +17,13 @@ function overlaps(a: Interval, b: Interval): boolean {
 /**
  * Renvoie les créneaux libres pour les `maxDaysAhead` prochains jours.
  * Chaque créneau réserve [début - buffer, fin + buffer] pour le trajet.
+ * `excludeBookingId` : RDV à ignorer (cas du report — son propre créneau
+ * ne doit pas bloquer le choix du nouveau).
  */
-export async function getAvailability(settings: Settings): Promise<DaySlots[]> {
+export async function getAvailability(
+  settings: Settings,
+  excludeBookingId?: string
+): Promise<DaySlots[]> {
   const openingHours = parseOpeningHours(settings);
   const daysOff = parseDaysOff(settings);
   const duration = settings.visitDurationMin;
@@ -35,7 +40,12 @@ export async function getAvailability(settings: Settings): Promise<DaySlots[]> {
   // Périodes occupées : RDV actifs en BDD + Google Agenda (synchro temps réel).
   const [bookings, googleBusy] = await Promise.all([
     prisma.booking.findMany({
-      where: { status: { not: "annule" }, endAt: { gte: rangeStart }, startAt: { lte: rangeEnd } },
+      where: {
+        status: { not: "annule" },
+        endAt: { gte: rangeStart },
+        startAt: { lte: rangeEnd },
+        ...(excludeBookingId ? { id: { not: excludeBookingId } } : {}),
+      },
       select: { startAt: true, endAt: true },
     }),
     getBusyPeriods(settings, rangeStart, rangeEnd),
@@ -80,8 +90,12 @@ export async function getAvailability(settings: Settings): Promise<DaySlots[]> {
 }
 
 /** Revérifie qu'un créneau précis est toujours libre (anti double-booking à la soumission). */
-export async function isSlotAvailable(settings: Settings, startAt: Date): Promise<boolean> {
-  const days = await getAvailability(settings);
+export async function isSlotAvailable(
+  settings: Settings,
+  startAt: Date,
+  excludeBookingId?: string
+): Promise<boolean> {
+  const days = await getAvailability(settings, excludeBookingId);
   const iso = startAt.toISOString();
   return days.some((d) => d.slots.includes(iso));
 }
