@@ -60,8 +60,10 @@ base des RDV enregistrés, et l'adresse se saisit manuellement.
 ## Rappels SMS (cron)
 
 `GET /api/cron/reminders` (header `Authorization: Bearer $CRON_SECRET`) envoie les
-rappels 24 h et 1 h. Sur Vercel, `vercel.json` le programme toutes les 10 minutes ;
-ailleurs, utilisez n'importe quel cron :
+rappels 24 h et 1 h. Sur Vercel plan Hobby, `vercel.json` le programme une fois par
+jour à 6h UTC (limite du plan gratuit) : le rappel « 24 h » devient un rappel le
+matin du RDV. Pour des rappels précis (dont le 1 h avant), appelez la route toutes
+les 10 minutes depuis un cron externe gratuit type cron-job.org :
 
 ```
 */10 * * * * curl -s -H "Authorization: Bearer $CRON_SECRET" https://votre-domaine/api/cron/reminders
