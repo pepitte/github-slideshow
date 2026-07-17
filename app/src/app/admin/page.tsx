@@ -1,0 +1,187 @@
+"use client";
+
+// Tableau de bord gérant : RDV à venir, détails prospects, photos, statuts.
+import { useEffect, useState } from "react";
+import AdminNav from "./AdminNav";
+
+type Photo = { id: string; dataUrl: string };
+type Booking = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  email: string;
+  address: string;
+  postalCode: string;
+  city: string;
+  projectType: string;
+  description: string;
+  startAt: string;
+  status: string;
+  photos: Photo[];
+};
+type Lead = { id: string; name: string; phone: string; email: string; postalCode: string; message: string; createdAt: string };
+
+const STATUS_OPTIONS = [
+  { id: "a_faire", label: "À faire", color: "bg-amber-100 text-amber-800" },
+  { id: "devis_envoye", label: "Devis envoyé", color: "bg-blue-100 text-blue-800" },
+  { id: "gagne", label: "Gagné", color: "bg-leaf-100 text-leaf-800" },
+  { id: "perdu", label: "Perdu", color: "bg-gray-200 text-gray-700" },
+  { id: "annule", label: "Annulé", color: "bg-red-100 text-red-700" },
+];
+
+const PROJECT_LABELS: Record<string, string> = {
+  entretien: "Entretien de jardin général",
+  taille_haie: "Taille de haie",
+  debroussaillage: "Débroussaillage",
+  contrat_annuel: "Contrat d'entretien à l'année",
+  autre: "Autre",
+};
+
+function fmt(dateIso: string): string {
+  return new Date(dateIso).toLocaleString("fr-FR", {
+    timeZone: "Europe/Paris",
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+export default function AdminDashboard() {
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showPast, setShowPast] = useState(false);
+  const [expanded, setExpanded] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/admin/bookings")
+      .then((r) => {
+        if (r.status === 401) {
+          window.location.href = "/admin/login";
+          throw new Error("unauthorized");
+        }
+        return r.json();
+      })
+      .then((data) => {
+        setBookings(data.bookings ?? []);
+        setLeads(data.leads ?? []);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function updateStatus(id: string, status: string) {
+    setBookings((bs) => bs.map((b) => (b.id === id ? { ...b, status } : b)));
+    await fetch(`/api/admin/bookings/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+  }
+
+  const now = Date.now();
+  const visible = bookings.filter(
+    (b) => showPast || new Date(b.startAt).getTime() >= now - 24 * 3600_000
+  );
+
+  return (
+    <main className="mx-auto max-w-4xl px-4 py-6">
+      <AdminNav />
+      <div className="mb-4 flex items-center justify-between">
+        <h1 className="text-xl font-bold">Rendez-vous ({visible.length})</h1>
+        <label className="flex items-center gap-2 text-sm text-leaf-800/70">
+          <input type="checkbox" checked={showPast} onChange={(e) => setShowPast(e.target.checked)} />
+          Afficher les RDV passés
+        </label>
+      </div>
+
+      {loading && <p className="py-8 text-center text-leaf-800/60">Chargement…</p>}
+      {!loading && visible.length === 0 && (
+        <p className="card py-8 text-center text-leaf-800/60">Aucun rendez-vous pour le moment.</p>
+      )}
+
+      <div className="space-y-3">
+        {visible.map((b) => {
+          const status = STATUS_OPTIONS.find((s) => s.id === b.status) ?? STATUS_OPTIONS[0];
+          const isOpen = expanded === b.id;
+          return (
+            <div key={b.id} className="card">
+              <button
+                className="flex w-full items-center justify-between gap-3 text-left"
+                onClick={() => setExpanded(isOpen ? null : b.id)}
+              >
+                <div>
+                  <p className="font-semibold">
+                    {fmt(b.startAt)} — {b.firstName} {b.lastName}
+                  </p>
+                  <p className="text-sm text-leaf-800/70">
+                    {PROJECT_LABELS[b.projectType] ?? b.projectType} · {b.city || b.postalCode}
+                  </p>
+                </div>
+                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${status.color}`}>
+                  {status.label}
+                </span>
+              </button>
+
+              {isOpen && (
+                <div className="mt-4 space-y-3 border-t border-leaf-100 pt-4 text-sm">
+                  <p>
+                    📞 <a className="text-leaf-700 underline" href={`tel:${b.phone}`}>{b.phone}</a>
+                    {" · "}
+                    ✉️ <a className="text-leaf-700 underline" href={`mailto:${b.email}`}>{b.email}</a>
+                  </p>
+                  <p>📍 {b.address}, {b.postalCode} {b.city}</p>
+                  {b.description && <p className="rounded-xl bg-sand-50 p-3">{b.description}</p>}
+                  {b.photos.length > 0 && (
+                    <div className="flex gap-2">
+                      {b.photos.map((p) => (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <a key={p.id} href={p.dataUrl} target="_blank" rel="noreferrer">
+                          <img src={p.dataUrl} alt="Photo du chantier" loading="lazy" className="h-24 w-24 rounded-xl object-cover" />
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                  <div>
+                    <span className="label">Statut</span>
+                    <div className="flex flex-wrap gap-2">
+                      {STATUS_OPTIONS.map((s) => (
+                        <button
+                          key={s.id}
+                          onClick={() => updateStatus(b.id, s.id)}
+                          className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                            b.status === s.id ? s.color + " ring-2 ring-leaf-600/40" : "bg-gray-100 text-gray-600"
+                          }`}
+                        >
+                          {s.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {leads.length > 0 && (
+        <section className="mt-10">
+          <h2 className="mb-3 text-lg font-bold">Demandes hors zone ({leads.length})</h2>
+          <div className="space-y-2">
+            {leads.map((l) => (
+              <div key={l.id} className="card py-3 text-sm">
+                <p className="font-semibold">
+                  {l.name} — {l.postalCode} · <a className="text-leaf-700 underline" href={`tel:${l.phone}`}>{l.phone}</a>
+                </p>
+                {l.message && <p className="mt-1 text-leaf-800/70">{l.message}</p>}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+    </main>
+  );
+}
