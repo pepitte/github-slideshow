@@ -95,6 +95,28 @@ model GalleryPhoto {
   dataUrl String
 }
 
+// Professionnels (équipe / sous-traitants) qui déclarent leurs disponibilités.
+// Inscription libre (email + mot de passe). Inspiré des applis de garde pompiers.
+model Pro {
+  id             String   @id @default(cuid())
+  createdAt      DateTime @default(now())
+  name           String
+  email          String   @unique
+  passwordHash   String
+  phone          String   @default("")
+  baseCity       String   @default("")
+  basePostalCode String   @default("")
+  radiusKm       Int      @default(30)
+  // disponible_devis | disponible_chantier | sous_confirmation | indisponible
+  status         String   @default("indisponible")
+  // Nombre de journées disponibles annoncées
+  availableDays  Int      @default(0)
+  // Dates disponibles : ["2026-08-12","2026-08-13",...]
+  datesJson      String   @default("[]")
+  note           String   @default("")
+  updatedAt      DateTime @updatedAt
+}
+
 // Prospects hors zone d'intervention (formulaire de contact)
 model Lead {
   id         String   @id @default(cuid())
