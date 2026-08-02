@@ -44,7 +44,7 @@ export default async function LandingPage() {
       {/* Hero */}
       <section className="py-6 text-center">
         <h1 className="text-3xl font-extrabold leading-tight text-leaf-950 sm:text-4xl">
-          Le devis pour votre jardin, <span className="text-leaf-600">réservé en 60 secondes</span>
+          Réservez en ligne <span className="text-leaf-600">votre devis ou votre prochain entretien de jardin</span>
         </h1>
         <p className="mx-auto mt-3 max-w-md text-leaf-800/80">
           Choisissez un créneau, on se déplace gratuitement pour évaluer votre projet.
