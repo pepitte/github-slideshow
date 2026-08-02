@@ -138,6 +138,8 @@ export default async function LandingPage() {
         <br />
         <a href="/mentions-legales" className="underline">Mentions légales & confidentialité</a>
         {" · "}
+        <a href="/pro" className="underline">Espace professionnel</a>
+        {" · "}
         <a href="/admin" className="underline">Espace gérant</a>
       </footer>
     </main>

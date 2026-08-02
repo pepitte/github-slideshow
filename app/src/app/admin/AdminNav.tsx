@@ -21,6 +21,7 @@ export default function AdminNav() {
     <nav className="mb-6 flex items-center gap-2 border-b border-leaf-100 pb-4">
       <span className="mr-2 text-xl" aria-hidden>🌿</span>
       <Link href="/admin" className={linkClass("/admin")}>Tableau de bord</Link>
+      <Link href="/admin/pros" className={linkClass("/admin/pros")}>Professionnels</Link>
       <Link href="/admin/parametres" className={linkClass("/admin/parametres")}>Paramètres</Link>
       <button onClick={logout} className="ml-auto text-sm text-leaf-800/60 hover:text-leaf-800">
         Déconnexion

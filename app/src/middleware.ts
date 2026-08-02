@@ -13,9 +13,17 @@ export function middleware(req: NextRequest) {
       return NextResponse.redirect(url);
     }
   }
+  if (pathname === "/pro" || (pathname.startsWith("/pro/") && pathname !== "/pro/login")) {
+    const cookie = req.cookies.get("pro_session")?.value;
+    if (!cookie || !cookie.includes(".")) {
+      const url = req.nextUrl.clone();
+      url.pathname = "/pro/login";
+      return NextResponse.redirect(url);
+    }
+  }
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/admin/:path*"],
+  matcher: ["/admin/:path*", "/pro/:path*"],
 };
