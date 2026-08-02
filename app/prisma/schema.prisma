@@ -117,6 +117,17 @@ model Pro {
   updatedAt      DateTime @updatedAt
 }
 
+// Comptes particuliers (clients). La réservation reste possible sans compte ;
+// le compte permet de retrouver et gérer ses rendez-vous (rattachés par email).
+model Client {
+  id           String   @id @default(cuid())
+  createdAt    DateTime @default(now())
+  name         String
+  email        String   @unique
+  passwordHash String
+  phone        String   @default("")
+}
+
 // Prospects hors zone d'intervention (formulaire de contact)
 model Lead {
   id         String   @id @default(cuid())

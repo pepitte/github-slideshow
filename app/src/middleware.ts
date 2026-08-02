@@ -21,9 +21,17 @@ export function middleware(req: NextRequest) {
       return NextResponse.redirect(url);
     }
   }
+  if (pathname === "/compte" || (pathname.startsWith("/compte/") && pathname !== "/compte/login")) {
+    const cookie = req.cookies.get("client_session")?.value;
+    if (!cookie || !cookie.includes(".")) {
+      const url = req.nextUrl.clone();
+      url.pathname = "/compte/login";
+      return NextResponse.redirect(url);
+    }
+  }
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/pro/:path*"],
+  matcher: ["/admin/:path*", "/pro/:path*", "/compte/:path*"],
 };
