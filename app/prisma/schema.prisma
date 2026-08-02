@@ -113,6 +113,8 @@ model Pro {
   availableDays  Int      @default(0)
   // Dates disponibles : ["2026-08-12","2026-08-13",...]
   datesJson      String   @default("[]")
+  // Créneaux devis validés (fin de journée, pas de 30 min) : ["18:00","18:30",...]
+  devisSlotsJson String   @default("[]")
   note           String   @default("")
   updatedAt      DateTime @updatedAt
 }

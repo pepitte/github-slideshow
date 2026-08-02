@@ -14,8 +14,12 @@ type Pro = {
   status: string;
   availableDays: number;
   datesJson: string;
+  devisSlotsJson: string;
   note: string;
 };
+
+// Créneaux devis proposés aux clients : fin de journée, toutes les 30 min.
+const DEVIS_SLOTS = ["16:30", "17:00", "17:30", "18:00", "18:30", "19:00", "19:30"];
 
 function addMonths(d: Date, n: number) {
   return new Date(d.getFullYear(), d.getMonth() + n, 1);
@@ -27,6 +31,7 @@ function ymd(d: Date) {
 export default function ProDashboard() {
   const [pro, setPro] = useState<Pro | null>(null);
   const [dates, setDates] = useState<string[]>([]);
+  const [devisSlots, setDevisSlots] = useState<string[]>([]);
   const [month, setMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -44,6 +49,9 @@ export default function ProDashboard() {
         setPro(pro);
         try {
           setDates(JSON.parse(pro.datesJson) || []);
+        } catch {}
+        try {
+          setDevisSlots(JSON.parse(pro.devisSlotsJson) || []);
         } catch {}
       })
       .catch(() => {});
@@ -89,6 +97,7 @@ export default function ProDashboard() {
         status: pro.status,
         note: pro.note,
         dates,
+        devisSlots,
       }),
     });
     setSaving(false);
@@ -132,6 +141,40 @@ export default function ProDashboard() {
               >
                 <span className="h-3.5 w-3.5 rounded-full" style={{ background: meta.dot }} />
                 {meta.label}
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Créneaux devis (fin de journée, toutes les 30 min) */}
+      <section className="card mt-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="font-bold">Créneaux devis</h2>
+          <span className="text-sm text-leaf-800/60">{devisSlots.length} validé(s)</span>
+        </div>
+        <p className="text-sm text-leaf-800/70">
+          Validez les horaires de fin de journée où vous pouvez assurer une visite devis.
+        </p>
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+          {DEVIS_SLOTS.map((t) => {
+            const on = devisSlots.includes(t);
+            return (
+              <button
+                key={t}
+                type="button"
+                onClick={() =>
+                  setDevisSlots((prev) =>
+                    prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t].sort()
+                  )
+                }
+                className={`rounded-xl border py-3 text-sm font-semibold transition ${
+                  on
+                    ? "border-leaf-600 bg-leaf-600 text-white"
+                    : "border-leaf-200 bg-white text-leaf-900"
+                }`}
+              >
+                {t.replace(":", "h")}
               </button>
             );
           })}
