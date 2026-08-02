@@ -47,6 +47,12 @@ export async function PUT(req: NextRequest) {
       .slice(0, 366);
     data.datesJson = JSON.stringify(dates);
   }
+  if (Array.isArray(body.devisSlots)) {
+    const slots = (body.devisSlots as unknown[])
+      .filter((s) => typeof s === "string" && /^\d{2}:\d{2}$/.test(s))
+      .slice(0, 48);
+    data.devisSlotsJson = JSON.stringify(slots);
+  }
 
   const pro = await prisma.pro.update({ where: { id }, data });
   return NextResponse.json({ pro: sanitize(pro) });

@@ -16,9 +16,20 @@ type Pro = {
   status: string;
   availableDays: number;
   datesJson: string;
+  devisSlotsJson: string;
   note: string;
   updatedAt: string;
 };
+
+function fmtSlots(json: string): string {
+  try {
+    const slots: string[] = JSON.parse(json);
+    if (!slots.length) return "—";
+    return slots.map((s) => s.replace(":", "h")).join(" · ");
+  } catch {
+    return "—";
+  }
+}
 
 function fmtDates(json: string): string {
   try {
@@ -95,6 +106,7 @@ export default function AdminProsPage() {
                 </p>
                 <p>🗓️ {p.availableDays} journée(s) annoncée(s)</p>
                 <p>📅 {fmtDates(p.datesJson)}</p>
+                <p>⏰ Créneaux devis : {fmtSlots(p.devisSlotsJson)}</p>
                 {p.note && <p className="rounded-xl bg-sand-50 p-3 text-leaf-800/80">{p.note}</p>}
               </div>
             </div>

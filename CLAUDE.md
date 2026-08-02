@@ -62,6 +62,21 @@ Docs : `app/ARCHITECTURE.md`.
 - RGPD : bannière de consentement obligatoire avant activation du pixel Meta
   (composant MetaPixel), notice confidentialité à l'étape 2 du tunnel.
 
+## Espaces & comptes
+
+- **Réservation client** : sans compte (parcours 60 s), 2 types de RDV (devis
+  fin de journée 16h30-20h ; chantier en journée dès 8h, durée 2h par défaut).
+- **Comptes particuliers** (`/compte`, inscription libre) : retrouvent leurs RDV
+  par email (même ceux réservés sans compte), modifier/annuler.
+- **Espace professionnel** (`/pro`, inscription libre) : statut de dispo (🟢 devis
+  / 🔵 chantier / 🟠 sous confirmation / 🔴 indispo), dates, nb de jours, rayon.
+  Vue gérant : onglet « Professionnels » dans `/admin`.
+- **Connexion unifiée** : `/connexion` (choix particulier / professionnel).
+- 3 sessions indépendantes (cookies séparés) : admin, pro, client. Mots de passe
+  hachés (scrypt), sessions signées HMAC (AUTH_SECRET).
+- **Déploiement** : Vercel plan Hobby (cron rappels 1×/jour à 6h UTC). Fusion des
+  PR vers `main` via l'outil GitHub (le client n'a pas à le faire) → redeploy auto.
+
 ## Démo interactive (artifact)
 
 Réplique cliquable du produit, publiée sur claude.ai :
