@@ -33,6 +33,9 @@ type SettingsView = {
   minNoticeHours: number;
   maxDaysAhead: number;
   openingHoursJson: string;
+  chantierEnabled: boolean;
+  chantierDurationMin: number;
+  chantierHoursJson: string;
   daysOffJson: string;
   smsConfirmation: string;
   smsReminder24h: string;
@@ -50,6 +53,7 @@ export default function AdminSettingsPage() {
   const [s, setS] = useState<SettingsView | null>(null);
   const [postalCodes, setPostalCodes] = useState("");
   const [hours, setHours] = useState<Record<string, OpeningDay>>({});
+  const [chantierHours, setChantierHours] = useState<Record<string, OpeningDay>>({});
   const [daysOff, setDaysOff] = useState<DayOff[]>([]);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -96,6 +100,9 @@ export default function AdminSettingsPage() {
           setHours(JSON.parse(settings.openingHoursJson) || {});
         } catch {}
         try {
+          setChantierHours(JSON.parse(settings.chantierHoursJson) || {});
+        } catch {}
+        try {
           setDaysOff(JSON.parse(settings.daysOffJson) || []);
         } catch {}
       });
@@ -133,6 +140,9 @@ export default function AdminSettingsPage() {
         minNoticeHours: s.minNoticeHours,
         maxDaysAhead: s.maxDaysAhead,
         openingHours: hours,
+        chantierEnabled: s.chantierEnabled,
+        chantierDurationMin: s.chantierDurationMin,
+        chantierHours,
         daysOff,
         smsConfirmation: s.smsConfirmation,
         smsReminder24h: s.smsReminder24h,
@@ -349,6 +359,78 @@ export default function AdminSettingsPage() {
               </div>
             );
           })}
+        </section>
+
+        {/* Rendez-vous chantier */}
+        <section className="card space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="font-bold">🚜 Rendez-vous chantier</h2>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={s.chantierEnabled}
+                onChange={(e) => set({ chantierEnabled: e.target.checked })}
+              />
+              Proposer ce type de RDV
+            </label>
+          </div>
+          {s.chantierEnabled && (
+            <>
+              <div>
+                <label className="label">Durée d&apos;une intervention (min)</label>
+                <input
+                  className="input max-w-[8rem]"
+                  type="number"
+                  min={30}
+                  step={30}
+                  value={s.chantierDurationMin}
+                  onChange={(e) => set({ chantierDurationMin: Number(e.target.value) })}
+                />
+                <p className="mt-1 text-xs text-leaf-800/60">
+                  120 = 2 h, 240 = demi-journée, 480 = journée entière.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <span className="label">Horaires des chantiers (en journée, dès 8h)</span>
+                {[1, 2, 3, 4, 5, 6, 7].map((d) => {
+                  const day = chantierHours[String(d)] ?? { enabled: false, start: "08:00", end: "18:00" };
+                  return (
+                    <div key={d} className="flex items-center gap-3 text-sm">
+                      <label className="flex w-28 items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={day.enabled}
+                          onChange={(e) =>
+                            setChantierHours({ ...chantierHours, [d]: { ...day, enabled: e.target.checked } })
+                          }
+                        />
+                        {DAY_NAMES[d]}
+                      </label>
+                      <input
+                        type="time"
+                        className="input max-w-[7.5rem] py-2"
+                        value={day.start}
+                        disabled={!day.enabled}
+                        onChange={(e) =>
+                          setChantierHours({ ...chantierHours, [d]: { ...day, start: e.target.value } })
+                        }
+                      />
+                      <span>→</span>
+                      <input
+                        type="time"
+                        className="input max-w-[7.5rem] py-2"
+                        value={day.end}
+                        disabled={!day.enabled}
+                        onChange={(e) =>
+                          setChantierHours({ ...chantierHours, [d]: { ...day, end: e.target.value } })
+                        }
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
         </section>
 
         {/* Congés */}

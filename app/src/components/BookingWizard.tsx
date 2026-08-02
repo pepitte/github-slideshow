@@ -2,7 +2,7 @@
 
 // Tunnel de réservation mobile-first en 3 étapes — objectif < 60 secondes.
 // 1. Projet  2. Coordonnées + adresse (contrôle de zone)  3. Créneau → confirmation.
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import AddressAutocomplete, { type AddressValue } from "./AddressAutocomplete";
 import PhotoUpload from "./PhotoUpload";
@@ -17,10 +17,28 @@ const PROJECT_TYPES = [
   { id: "autre", label: "Autre projet" },
 ];
 
-export default function BookingWizard({ companyPhone }: { companyPhone: string }) {
+export default function BookingWizard({
+  companyPhone,
+  chantierEnabled = true,
+}: {
+  companyPhone: string;
+  chantierEnabled?: boolean;
+}) {
   const router = useRouter();
+  const [kind, setKind] = useState<"devis" | "chantier">("devis");
   const [step, setStep] = useState(1);
   const [projectType, setProjectType] = useState("");
+
+  // Le 2e bouton du hero (#chantier) préselectionne le rendez-vous chantier.
+  useEffect(() => {
+    function applyHash() {
+      if (window.location.hash === "#chantier" && chantierEnabled) setKind("chantier");
+      else if (window.location.hash === "#reserver") setKind("devis");
+    }
+    applyHash();
+    window.addEventListener("hashchange", applyHash);
+    return () => window.removeEventListener("hashchange", applyHash);
+  }, [chantierEnabled]);
   const [description, setDescription] = useState("");
   const [photos, setPhotos] = useState<string[]>([]);
   const [firstName, setFirstName] = useState("");
@@ -85,6 +103,7 @@ export default function BookingWizard({ companyPhone }: { companyPhone: string }
           address: addr.address,
           postalCode: addr.postalCode,
           city: addr.city,
+          kind,
           projectType,
           description,
           photos,
@@ -181,6 +200,28 @@ export default function BookingWizard({ companyPhone }: { companyPhone: string }
 
       {step === 1 && (
         <div className="space-y-4">
+          {chantierEnabled && (
+            <div className="grid grid-cols-2 gap-2 rounded-xl bg-leaf-50 p-1">
+              <button
+                type="button"
+                onClick={() => setKind("devis")}
+                className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${
+                  kind === "devis" ? "bg-white text-leaf-800 shadow-sm" : "text-leaf-800/60"
+                }`}
+              >
+                Rendez-vous devis
+              </button>
+              <button
+                type="button"
+                onClick={() => setKind("chantier")}
+                className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${
+                  kind === "chantier" ? "bg-white text-leaf-800 shadow-sm" : "text-leaf-800/60"
+                }`}
+              >
+                Rendez-vous chantier
+              </button>
+            </div>
+          )}
           <h3 className="text-lg font-bold">Votre projet</h3>
           <div className="grid grid-cols-2 gap-2">
             {PROJECT_TYPES.map((t) => (
@@ -285,11 +326,15 @@ export default function BookingWizard({ companyPhone }: { companyPhone: string }
 
       {step === 3 && (
         <div className="space-y-4">
-          <h3 className="text-lg font-bold">Choisissez votre créneau</h3>
+          <h3 className="text-lg font-bold">
+            {kind === "chantier" ? "Choisissez le jour de l'intervention" : "Choisissez votre créneau"}
+          </h3>
           <p className="text-sm text-leaf-800/70">
-            Seuls les créneaux réellement disponibles sont affichés.
+            {kind === "chantier"
+              ? "Interventions en journée, à partir de 8h. Seuls les créneaux disponibles sont affichés."
+              : "Seuls les créneaux réellement disponibles sont affichés."}
           </p>
-          <SlotPicker selected={slot} onSelect={setSlot} />
+          <SlotPicker selected={slot} onSelect={setSlot} kind={kind} />
           {error && <p className="text-sm text-red-600">{error}</p>}
           <div className="flex flex-col gap-2 sm:flex-row">
             <button className="btn-secondary" onClick={() => setStep(2)}>← Retour</button>
@@ -298,7 +343,10 @@ export default function BookingWizard({ companyPhone }: { companyPhone: string }
             </button>
           </div>
           <p className="text-center text-xs text-leaf-800/50">
-            Gratuit et sans engagement — une question ? {companyPhone}
+            {kind === "chantier"
+              ? "Sans engagement"
+              : "Gratuit et sans engagement"}{" "}
+            — une question ? {companyPhone}
           </p>
         </div>
       )}

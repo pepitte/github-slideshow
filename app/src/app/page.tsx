@@ -53,6 +53,9 @@ export default async function LandingPage() {
         <a id="hero-cta" href="#reserver" className="btn-primary mt-5">
           Réserver mon RDV devis gratuit
         </a>
+        <a href="#chantier" className="btn-secondary mt-3 w-full sm:w-auto">
+          Réserver un rendez-vous chantier
+        </a>
         <p className="mt-4 text-sm font-medium text-leaf-800/70">
           Plus de 100 clients satisfaits
         </p>
@@ -110,8 +113,12 @@ export default async function LandingPage() {
 
       {/* Tunnel de réservation */}
       <section className="py-6">
-        <h2 className="mb-4 text-center text-xl font-bold">Réservez votre visite devis</h2>
-        <BookingWizard companyPhone={settings.companyPhone} />
+        <span id="chantier" className="block -translate-y-24" aria-hidden />
+        <h2 className="mb-4 text-center text-xl font-bold">Réservez votre rendez-vous</h2>
+        <BookingWizard
+          companyPhone={settings.companyPhone}
+          chantierEnabled={settings.chantierEnabled}
+        />
       </section>
 
       <p className="pt-6 text-center text-sm text-leaf-800/80">

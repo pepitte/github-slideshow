@@ -18,6 +18,17 @@ export const DEFAULT_OPENING_HOURS: OpeningHours = {
   "7": { enabled: false, start: "09:00", end: "12:00" },
 };
 
+// Chantiers : le matin à partir de 8h, en journée.
+export const DEFAULT_CHANTIER_HOURS: OpeningHours = {
+  "1": { enabled: true, start: "08:00", end: "18:00" },
+  "2": { enabled: true, start: "08:00", end: "18:00" },
+  "3": { enabled: true, start: "08:00", end: "18:00" },
+  "4": { enabled: true, start: "08:00", end: "18:00" },
+  "5": { enabled: true, start: "08:00", end: "18:00" },
+  "6": { enabled: false, start: "08:00", end: "12:00" },
+  "7": { enabled: false, start: "08:00", end: "12:00" },
+};
+
 export const DEFAULT_SMS_CONFIRMATION =
   "Bonjour {{prenom}}, votre RDV devis avec {{entreprise}} est confirmé le {{date}} à {{heure}} au {{adresse}}. Question ou imprévu ? {{telephone}}. Annuler/reporter : {{lien_annulation}}";
 export const DEFAULT_SMS_24H =
@@ -50,6 +61,14 @@ export function parseOpeningHours(s: Settings): OpeningHours {
     if (parsed && typeof parsed === "object") return parsed;
   } catch {}
   return DEFAULT_OPENING_HOURS;
+}
+
+export function parseChantierHours(s: Settings): OpeningHours {
+  try {
+    const parsed = JSON.parse(s.chantierHoursJson);
+    if (parsed && typeof parsed === "object") return parsed;
+  } catch {}
+  return DEFAULT_CHANTIER_HOURS;
 }
 
 export function parseDaysOff(s: Settings): DayOff[] {
