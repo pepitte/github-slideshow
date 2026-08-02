@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSettings } from "@/lib/settings";
 import { checkZone } from "@/lib/zone";
-import { isSlotAvailable } from "@/lib/availability";
+import { isSlotAvailable, durationFor, type BookingKind } from "@/lib/availability";
 import { createCalendarEvent } from "@/lib/google";
 import { sendConfirmation } from "@/lib/notifications";
 
@@ -28,6 +28,7 @@ export async function POST(req: NextRequest) {
   const postalCode = String(body.postalCode ?? "").trim();
   const city = String(body.city ?? "").trim();
   const projectType = String(body.projectType ?? "");
+  const kind: BookingKind = body.kind === "chantier" ? "chantier" : "devis";
   const description = String(body.description ?? "").slice(0, 2000);
   const startAtRaw = String(body.startAt ?? "");
   const photos = Array.isArray(body.photos) ? (body.photos as string[]).slice(0, 6) : [];
@@ -57,11 +58,11 @@ export async function POST(req: NextRequest) {
   }
 
   // 2. Le créneau est-il toujours libre ? (BDD + Google Agenda)
-  if (!(await isSlotAvailable(settings, startAt))) {
+  if (!(await isSlotAvailable(settings, startAt, { kind }))) {
     return NextResponse.json({ error: "creneau_indisponible" }, { status: 409 });
   }
 
-  const endAt = new Date(startAt.getTime() + settings.visitDurationMin * 60_000);
+  const endAt = new Date(startAt.getTime() + durationFor(settings, kind) * 60_000);
 
   const booking = await prisma.booking.create({
     data: {
@@ -74,6 +75,7 @@ export async function POST(req: NextRequest) {
       city,
       lat: zone.lat,
       lng: zone.lng,
+      kind,
       projectType,
       description,
       startAt,

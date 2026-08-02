@@ -25,25 +25,32 @@ export default function SlotPicker({
   selected,
   onSelect,
   token,
+  kind = "devis",
 }: {
   selected: string | null;
   onSelect: (iso: string) => void;
   /** Lien d'annulation : exclut le RDV du client du calcul (report). */
   token?: string;
+  /** Type de rendez-vous (devis = fin de journée, chantier = journée dès 8h). */
+  kind?: "devis" | "chantier";
 }) {
   const [days, setDays] = useState<DaySlots[] | null>(null);
   const [activeDay, setActiveDay] = useState<string | null>(null);
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    fetch(`/api/availability${token ? `?token=${encodeURIComponent(token)}` : ""}`)
+    const params = new URLSearchParams();
+    params.set("kind", kind);
+    if (token) params.set("token", token);
+    setDays(null);
+    fetch(`/api/availability?${params.toString()}`)
       .then((r) => r.json())
       .then((data) => {
         setDays(data.days ?? []);
         if (data.days?.length) setActiveDay(data.days[0].date);
       })
       .catch(() => setError(true));
-  }, [token]);
+  }, [token, kind]);
 
   if (error) {
     return <p className="text-sm text-red-600">Impossible de charger les créneaux. Réessayez.</p>;

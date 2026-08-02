@@ -14,6 +14,7 @@ type Booking = {
   address: string;
   postalCode: string;
   city: string;
+  kind: string;
   projectType: string;
   description: string;
   startAt: string;
@@ -120,9 +121,20 @@ export default function AdminDashboard() {
                     {PROJECT_LABELS[b.projectType] ?? b.projectType} · {b.city || b.postalCode}
                   </p>
                 </div>
-                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${status.color}`}>
-                  {status.label}
-                </span>
+                <div className="flex flex-col items-end gap-1">
+                  <span
+                    className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+                      b.kind === "chantier"
+                        ? "bg-emerald-100 text-emerald-800"
+                        : "bg-sky-100 text-sky-800"
+                    }`}
+                  >
+                    {b.kind === "chantier" ? "Chantier" : "Devis"}
+                  </span>
+                  <span className={`rounded-full px-3 py-1 text-xs font-semibold ${status.color}`}>
+                    {status.label}
+                  </span>
+                </div>
               </button>
 
               {isOpen && (

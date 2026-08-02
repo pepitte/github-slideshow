@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSettings } from "@/lib/settings";
-import { isSlotAvailable } from "@/lib/availability";
+import { isSlotAvailable, durationFor, type BookingKind } from "@/lib/availability";
 import { createCalendarEvent, deleteCalendarEvent } from "@/lib/google";
 import { sendConfirmation } from "@/lib/notifications";
 
@@ -34,11 +34,12 @@ export async function POST(req: NextRequest) {
   }
 
   const settings = await getSettings();
-  if (!(await isSlotAvailable(settings, startAt, booking.id))) {
+  const kind = (booking.kind === "chantier" ? "chantier" : "devis") as BookingKind;
+  if (!(await isSlotAvailable(settings, startAt, { kind, excludeBookingId: booking.id }))) {
     return NextResponse.json({ error: "creneau_indisponible" }, { status: 409 });
   }
 
-  const endAt = new Date(startAt.getTime() + settings.visitDurationMin * 60_000);
+  const endAt = new Date(startAt.getTime() + durationFor(settings, kind) * 60_000);
 
   // Libère l'ancien événement Google avant d'enregistrer le nouveau créneau.
   await deleteCalendarEvent(settings, booking.googleEventId);

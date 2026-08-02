@@ -3,10 +3,16 @@
 import type { Settings } from "@prisma/client";
 import { prisma } from "./prisma";
 import { getBusyPeriods } from "./google";
-import { parseOpeningHours, parseDaysOff } from "./settings";
+import { parseOpeningHours, parseChantierHours, parseDaysOff } from "./settings";
 import { parisTimeToUtc, utcToParis, addDaysStr, todayParis } from "./dates";
 
 export type DaySlots = { date: string; slots: string[] }; // slots = ISO UTC des débuts
+export type BookingKind = "devis" | "chantier";
+
+/** Durée (min) d'un RDV selon son type. */
+export function durationFor(settings: Settings, kind: BookingKind): number {
+  return kind === "chantier" ? settings.chantierDurationMin : settings.visitDurationMin;
+}
 
 type Interval = { start: Date; end: Date };
 
@@ -22,16 +28,18 @@ function overlaps(a: Interval, b: Interval): boolean {
  */
 export async function getAvailability(
   settings: Settings,
-  excludeBookingId?: string
+  opts: { kind?: BookingKind; excludeBookingId?: string } = {}
 ): Promise<DaySlots[]> {
-  const openingHours = parseOpeningHours(settings);
+  const kind: BookingKind = opts.kind === "chantier" ? "chantier" : "devis";
+  const excludeBookingId = opts.excludeBookingId;
+  // Devis : horaires de fin de journée. Chantier : horaires de journée (matin 8h).
+  const openingHours = kind === "chantier" ? parseChantierHours(settings) : parseOpeningHours(settings);
   const daysOff = parseDaysOff(settings);
-  const duration = settings.visitDurationMin;
+  const duration = durationFor(settings, kind);
   const buffer = settings.bufferMin;
-  // Créneaux proposés au pas de la durée de visite (ex. toutes les 30 min).
-  // Le buffer n'espace pas l'affichage : il bloque les créneaux trop proches
-  // d'un RDV déjà pris (temps de trajet).
-  const step = duration;
+  // Pas d'affichage des créneaux : toutes les 30 min pour un chantier long,
+  // sinon au pas de la durée de visite (30 min pour un devis).
+  const step = kind === "chantier" ? 30 : duration;
 
   const startDay = todayParis();
   const rangeStart = new Date();
@@ -93,9 +101,9 @@ export async function getAvailability(
 export async function isSlotAvailable(
   settings: Settings,
   startAt: Date,
-  excludeBookingId?: string
+  opts: { kind?: BookingKind; excludeBookingId?: string } = {}
 ): Promise<boolean> {
-  const days = await getAvailability(settings, excludeBookingId);
+  const days = await getAvailability(settings, opts);
   const iso = startAt.toISOString();
   return days.some((d) => d.slots.includes(iso));
 }

@@ -32,6 +32,10 @@ model Settings {
   maxDaysAhead      Int      @default(21)
   // Horaires d'ouverture par jour: {"1":{"enabled":true,"start":"08:00","end":"18:00"}, ...} (1 = lundi)
   openingHoursJson  String   @default("")
+  // Rendez-vous chantier (2e type) : durée + horaires propres (commencent le matin à 8h)
+  chantierEnabled     Boolean @default(true)
+  chantierDurationMin Int     @default(120)
+  chantierHoursJson   String  @default("")
   // Congés / indisponibilités: [{"from":"2026-08-01","to":"2026-08-15","label":"Congés"}]
   daysOffJson       String   @default("[]")
   // Modèles de messages ({{prenom}}, {{date}}, {{heure}}, {{adresse}}, {{entreprise}}, {{telephone}}, {{lien_annulation}})
@@ -61,7 +65,8 @@ model Booking {
   city           String    @default("")
   lat            Float?
   lng            Float?
-  projectType    String // tonte | creation | terrasse | cloture | elagage | autre
+  kind           String    @default("devis") // devis | chantier
+  projectType    String // entretien | taille_haie | debroussaillage | contrat_annuel | autre
   description    String    @default("")
   startAt        DateTime
   endAt          DateTime
