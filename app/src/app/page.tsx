@@ -39,6 +39,11 @@ export default async function LandingPage() {
   const galleryPhotos = dbPhotos.length > 0 ? dbPhotos.map((p) => p.dataUrl) : getGalleryPhotos();
   return (
     <main className="mx-auto max-w-lg px-4 pb-16 sm:max-w-2xl">
+      <div className="flex items-center justify-end pt-3">
+        <a href="/connexion" className="text-sm font-semibold text-leaf-700">
+          Se connecter
+        </a>
+      </div>
       <SiteHeader />
 
       {/* Hero */}
@@ -138,7 +143,7 @@ export default async function LandingPage() {
         <br />
         <a href="/mentions-legales" className="underline">Mentions légales & confidentialité</a>
         {" · "}
-        <a href="/pro" className="underline">Espace professionnel</a>
+        <a href="/connexion" className="underline">Se connecter</a>
         {" · "}
         <a href="/admin" className="underline">Espace gérant</a>
       </footer>
