@@ -229,7 +229,7 @@ export default function PlanningPage() {
                     let slots = "";
                     try {
                       const s = JSON.parse(p.devisSlotsJson) as string[];
-                      if (p.status === "disponible_devis" && s.length) {
+                      if (s.length) {
                         slots = s.map((x) => x.replace(":", "h")).join(" · ");
                       }
                     } catch {}
@@ -239,7 +239,7 @@ export default function PlanningPage() {
                         <span className="font-semibold">{p.name}</span>
                         <span className="text-leaf-800/70">
                           {meta.label}
-                          {slots ? ` — ${slots}` : ""} · rayon {p.radiusKm} km
+                          {slots ? ` — créneaux devis : ${slots}` : ""} · rayon {p.radiusKm} km
                         </span>
                         <a className="ml-auto text-leaf-700 underline" href={`tel:${p.phone}`}>
                           {p.phone || ""}
