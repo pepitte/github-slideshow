@@ -73,8 +73,9 @@ Docs : `app/ARCHITECTURE.md`.
   report jour par jour (annuler puis re-réserver).
 - **Comptes particuliers** (`/compte`, inscription libre) : retrouvent leurs RDV
   par email (même ceux réservés sans compte), modifier/annuler.
-- **Espace professionnel** (`/pro`, inscription libre) : statut de dispo (🟢 devis
-  / 🔵 chantier / 🟠 sous confirmation / 🔴 indispo), dates, nb de jours, rayon.
+- **Espace professionnel** (`/pro`, inscription libre) : statut de dispo (🔵 devis
+  / 🟢 chantier / 🟠 sous confirmation / 🔴 indispo — code couleur unifié avec les
+  RDV : bleu = devis, vert = chantier), dates, nb de jours, rayon.
   Vue gérant : onglet « Professionnels » dans `/admin`.
 - **Connexion unifiée** : `/connexion` (choix particulier / professionnel).
 - **Planning patron** (`/admin/planning`, réservé gérant) : calendrier mensuel

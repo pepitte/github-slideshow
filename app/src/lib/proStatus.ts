@@ -5,13 +5,13 @@ export const PRO_STATUS_META: Record<
 > = {
   disponible_devis: {
     label: "Disponible pour un devis",
-    dot: "#22c55e", // 🟢
-    badge: "bg-green-100 text-green-800",
+    dot: "#3b82f6", // 🔵 — même code couleur que les RDV devis
+    badge: "bg-blue-100 text-blue-800",
   },
   disponible_chantier: {
     label: "Disponible pour un chantier",
-    dot: "#3b82f6", // 🔵
-    badge: "bg-blue-100 text-blue-800",
+    dot: "#22c55e", // 🟢 — même code couleur que les chantiers
+    badge: "bg-green-100 text-green-800",
   },
   sous_confirmation: {
     label: "Disponible sous confirmation",

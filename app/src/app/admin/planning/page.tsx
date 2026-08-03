@@ -126,8 +126,8 @@ export default function PlanningPage() {
       </div>
 
       <div className="mb-3 flex flex-wrap gap-3 text-xs text-leaf-800/70">
-        <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-sky-500" /> RDV devis</span>
-        <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-emerald-600" /> Chantier</span>
+        <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-blue-500" /> RDV devis</span>
+        <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-green-500" /> Chantier</span>
         <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm bg-leaf-200" /> Pro disponible (point coloré = statut)</span>
       </div>
 
@@ -161,7 +161,7 @@ export default function PlanningPage() {
                     {(bookingsByDay[day] ?? []).slice(0, 4).map((b) => (
                       <span
                         key={b.id}
-                        className={`h-2 w-2 rounded-full ${b.kind === "chantier" ? "bg-emerald-600" : "bg-sky-500"}`}
+                        className={`h-2 w-2 rounded-full ${b.kind === "chantier" ? "bg-green-500" : "bg-blue-500"}`}
                       />
                     ))}
                   </span>
@@ -198,7 +198,7 @@ export default function PlanningPage() {
                 <div className="mb-3 space-y-2">
                   {dayBookings.map((b) => (
                     <div key={b.id} className="flex items-center gap-2 rounded-xl bg-sand-50 px-3 py-2 text-sm">
-                      <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${b.kind === "chantier" ? "bg-emerald-600" : "bg-sky-500"}`} />
+                      <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${b.kind === "chantier" ? "bg-green-500" : "bg-blue-500"}`} />
                       <span className="font-semibold">
                         {b.kind === "chantier"
                           ? `Chantier dès ${parisTime(b.startAt)} → ${parisTime(b.endAt)}`
@@ -226,24 +226,32 @@ export default function PlanningPage() {
                 <div className="space-y-2">
                   {dayPros.map((p) => {
                     const meta = PRO_STATUS_META[p.status] ?? PRO_STATUS_META.indisponible;
-                    let slots = "";
+                    let slots: string[] = [];
                     try {
-                      const s = JSON.parse(p.devisSlotsJson) as string[];
-                      if (s.length) {
-                        slots = s.map((x) => x.replace(":", "h")).join(" · ");
-                      }
+                      slots = (JSON.parse(p.devisSlotsJson) as string[]) ?? [];
                     } catch {}
                     return (
-                      <div key={p.id} className="flex items-center gap-2 rounded-xl bg-sand-50 px-3 py-2 text-sm">
-                        <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: meta.dot }} />
-                        <span className="font-semibold">{p.name}</span>
-                        <span className="text-leaf-800/70">
-                          {meta.label}
-                          {slots ? ` — créneaux devis : ${slots}` : ""} · rayon {p.radiusKm} km
-                        </span>
-                        <a className="ml-auto text-leaf-700 underline" href={`tel:${p.phone}`}>
-                          {p.phone || ""}
-                        </a>
+                      <div key={p.id} className="rounded-xl bg-sand-50 px-3 py-2 text-sm">
+                        <div className="flex items-center gap-2">
+                          <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: meta.dot }} />
+                          <span className="font-semibold">{p.name}</span>
+                          <span className="text-leaf-800/70">
+                            {meta.label} · rayon {p.radiusKm} km
+                          </span>
+                          <a className="ml-auto text-leaf-700 underline" href={`tel:${p.phone}`}>
+                            {p.phone || ""}
+                          </a>
+                        </div>
+                        {slots.length > 0 && (
+                          <div className="mt-1.5 flex flex-wrap items-center gap-1">
+                            <span className="text-xs text-leaf-800/60">Heures devis :</span>
+                            {slots.map((s) => (
+                              <span key={s} className="rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-semibold text-blue-800">
+                                {s.replace(":", "h")}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
