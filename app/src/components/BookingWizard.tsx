@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import AddressAutocomplete, { type AddressValue } from "./AddressAutocomplete";
 import PhotoUpload from "./PhotoUpload";
-import SlotPicker from "./SlotPicker";
+import SlotPicker, { type ChantierSelection } from "./SlotPicker";
 import { trackMetaEvent } from "./MetaPixel";
 
 const PROJECT_TYPES = [
@@ -28,14 +28,14 @@ export default function BookingWizard({
   const [kind, setKindRaw] = useState<"devis" | "chantier">("devis");
   const [step, setStep] = useState(1);
   const [projectType, setProjectType] = useState("");
-  const [chantierDuration, setChantierDuration] = useState<"demi" | "journee" | null>(null);
+  const [chantierSel, setChantierSel] = useState<ChantierSelection>({ days: [], duration: null });
 
   // Changer de type de RDV remet à zéro le créneau choisi (les horaires diffèrent).
   function setKind(next: "devis" | "chantier") {
     setKindRaw((prev) => {
       if (prev !== next) {
         setSlot(null);
-        setChantierDuration(null);
+        setChantierSel({ days: [], duration: null });
       }
       return next;
     });
@@ -100,8 +100,12 @@ export default function BookingWizard({
     }
   }
 
+  const chantierReady =
+    chantierSel.days.length > 1 || (chantierSel.days.length === 1 && chantierSel.duration);
+
   async function submitBooking() {
-    if (!slot) return;
+    if (kind === "devis" && !slot) return;
+    if (kind === "chantier" && !chantierReady) return;
     setBusy(true);
     setError("");
     try {
@@ -117,7 +121,8 @@ export default function BookingWizard({
           postalCode: addr.postalCode,
           city: addr.city,
           kind,
-          chantierDuration,
+          chantierDuration: chantierSel.duration,
+          days: kind === "chantier" ? chantierSel.days : undefined,
           projectType,
           description,
           photos,
@@ -133,7 +138,7 @@ export default function BookingWizard({
       if (data.error === "creneau_indisponible") {
         setError("Ce créneau vient d'être réservé. Choisissez-en un autre.");
         setSlot(null);
-        setChantierDuration(null);
+        setChantierSel({ days: [], duration: null });
       } else if (data.error === "hors_zone") {
         setOutOfZone(true);
       } else {
@@ -342,31 +347,33 @@ export default function BookingWizard({
       {step === 3 && (
         <div className="space-y-4">
           <h3 className="text-lg font-bold">
-            {kind === "chantier" ? "Choisissez le jour de l'intervention" : "Choisissez votre créneau"}
+            {kind === "chantier" ? "Choisissez le ou les jours de l'intervention" : "Choisissez votre créneau"}
           </h3>
           <p className="text-sm text-leaf-800/70">
             {kind === "chantier"
-              ? "Tous les chantiers commencent à 8h00 : demi-journée (8h-12h) ou journée entière."
+              ? "Tous les chantiers commencent à 8h00. Un jour : demi-journée (8h-12h) ou journée entière ; plusieurs jours : journée entière chacun."
               : "Seuls les créneaux réellement disponibles sont affichés."}
           </p>
           <SlotPicker
             selected={slot}
-            selectedDuration={chantierDuration}
-            onSelect={(iso, duration) => {
-              setSlot(iso);
-              setChantierDuration(duration ?? null);
-            }}
+            onSelect={setSlot}
             kind={kind}
+            chantier={chantierSel}
+            onChantierChange={setChantierSel}
           />
           {error && <p className="text-sm text-red-600">{error}</p>}
           <div className="flex flex-col gap-2 sm:flex-row">
             <button className="btn-secondary" onClick={() => setStep(2)}>← Retour</button>
             <button
               className="btn-primary"
-              disabled={!slot || (kind === "chantier" && !chantierDuration) || busy}
+              disabled={(kind === "devis" ? !slot : !chantierReady) || busy}
               onClick={submitBooking}
             >
-              {busy ? "Réservation…" : "Confirmer mon RDV ✓"}
+              {busy
+                ? "Réservation…"
+                : kind === "chantier" && chantierSel.days.length > 1
+                  ? `Confirmer (${chantierSel.days.length} jours) ✓`
+                  : "Confirmer mon RDV ✓"}
             </button>
           </div>
           <p className="text-center text-xs text-leaf-800/50">

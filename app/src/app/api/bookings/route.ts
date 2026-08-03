@@ -37,7 +37,12 @@ export async function POST(req: NextRequest) {
   const chantierDuration: ChantierDuration =
     body.chantierDuration === "journee" ? "journee" : "demi";
   const description = String(body.description ?? "").slice(0, 2000);
-  const startAtRaw = String(body.startAt ?? "");
+  // Chantier : un ou plusieurs jours (body.days) ; devis : un créneau (body.startAt).
+  const daysRaw: string[] =
+    kind === "chantier" && Array.isArray(body.days) && body.days.length
+      ? (body.days as unknown[]).slice(0, 30).map(String)
+      : [String(body.startAt ?? "")];
+  const startAtRaw = daysRaw[0];
   const photos = Array.isArray(body.photos) ? (body.photos as string[]).slice(0, 6) : [];
 
   if (!firstName || !lastName || !phone || !email || !address || !postalCode) {
@@ -65,35 +70,79 @@ export async function POST(req: NextRequest) {
   }
 
   // 2. Le créneau est-il toujours libre ? (BDD + Google Agenda)
-  // Chantier : jour + formule (demi-journée 8h-12h ou journée entière dès 8h).
-  let endAt: Date;
+  // Chantier : un ou plusieurs jours. Plusieurs jours → journée entière chacun ;
+  // un seul jour → formule choisie (demi-journée 8h-12h ou journée entière).
+  const commonData = {
+    firstName,
+    lastName,
+    phone,
+    email,
+    address,
+    postalCode,
+    city,
+    lat: zone.lat,
+    lng: zone.lng,
+    kind,
+    projectType,
+    description,
+  };
+
   if (kind === "chantier") {
-    const chantierEnd = await checkChantier(settings, startAt, chantierDuration);
-    if (!chantierEnd) {
-      return NextResponse.json({ error: "creneau_indisponible" }, { status: 409 });
+    const days = Array.from(new Set(daysRaw))
+      .map((d) => new Date(d))
+      .sort((a, b) => a.getTime() - b.getTime());
+    if (days.some((d) => isNaN(d.getTime()))) {
+      return NextResponse.json({ error: "Créneau invalide" }, { status: 400 });
     }
-    endAt = chantierEnd;
-  } else {
-    if (!(await isSlotAvailable(settings, startAt))) {
-      return NextResponse.json({ error: "creneau_indisponible" }, { status: 409 });
+    const formula = days.length > 1 ? "journee" : chantierDuration;
+    const ends: Date[] = [];
+    for (const day of days) {
+      const end = await checkChantier(settings, day, formula);
+      if (!end) {
+        return NextResponse.json({ error: "creneau_indisponible" }, { status: 409 });
+      }
+      ends.push(end);
     }
-    endAt = new Date(startAt.getTime() + settings.visitDurationMin * 60_000);
+
+    // RDV principal (lien d'annulation + photos), puis un RDV par jour supplémentaire.
+    const primary = await prisma.booking.create({
+      data: {
+        ...commonData,
+        startAt: days[0],
+        endAt: ends[0],
+        photos: { create: photos.map((dataUrl) => ({ dataUrl })) },
+      },
+    });
+    const siblings = [];
+    for (let i = 1; i < days.length; i++) {
+      siblings.push(
+        await prisma.booking.create({
+          data: { ...commonData, groupId: primary.id, startAt: days[i], endAt: ends[i] },
+        })
+      );
+    }
+
+    // Synchro Google Agenda (un événement par jour)
+    for (const b of [primary, ...siblings]) {
+      const googleEventId = await createCalendarEvent(settings, b);
+      if (googleEventId) {
+        await prisma.booking.update({ where: { id: b.id }, data: { googleEventId } });
+      }
+    }
+
+    // SMS + email de confirmation (dates groupées si plusieurs jours)
+    await sendConfirmation(primary, settings, days);
+    return NextResponse.json({ id: primary.id }, { status: 201 });
   }
+
+  if (!(await isSlotAvailable(settings, startAt))) {
+    return NextResponse.json({ error: "creneau_indisponible" }, { status: 409 });
+  }
+  const endAt = new Date(startAt.getTime() + settings.visitDurationMin * 60_000);
 
   const booking = await prisma.booking.create({
     data: {
-      firstName,
-      lastName,
-      phone,
-      email,
-      address,
-      postalCode,
-      city,
-      lat: zone.lat,
-      lng: zone.lng,
-      kind,
-      projectType,
-      description,
+      ...commonData,
       startAt,
       endAt,
       photos: { create: photos.map((dataUrl) => ({ dataUrl })) },

@@ -38,6 +38,13 @@ export async function POST(req: NextRequest) {
   if (booking.status === "annule") {
     return NextResponse.json({ error: "deja_annule" }, { status: 409 });
   }
+  // Chantier multi-jours : pas de report jour par jour — annuler puis re-réserver.
+  const siblingCount = await prisma.booking.count({
+    where: { OR: [{ groupId: booking.id }, ...(booking.groupId ? [{ id: booking.groupId }] : [])] },
+  });
+  if (booking.groupId || siblingCount > 0) {
+    return NextResponse.json({ error: "groupe_multi_jours" }, { status: 409 });
+  }
 
   const settings = await getSettings();
   let endAt: Date;
