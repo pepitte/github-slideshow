@@ -64,8 +64,10 @@ Docs : `app/ARCHITECTURE.md`.
 
 ## Espaces & comptes
 
-- **Réservation client** : sans compte (parcours 60 s), 2 types de RDV (devis
-  fin de journée 16h30-20h ; chantier en journée dès 8h, durée 2h par défaut).
+- **Réservation client** : sans compte (parcours 60 s), 2 types de RDV — devis
+  fin de journée 16h30-20h (créneaux 30 min) ; chantier : le client choisit un
+  **jour** puis une **formule** « demi-journée 8h-12h » ou « journée entière »,
+  tous les chantiers commencent à 8h00 (un seul chantier par jour).
 - **Comptes particuliers** (`/compte`, inscription libre) : retrouvent leurs RDV
   par email (même ceux réservés sans compte), modifier/annuler.
 - **Espace professionnel** (`/pro`, inscription libre) : statut de dispo (🟢 devis

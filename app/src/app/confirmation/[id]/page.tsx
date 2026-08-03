@@ -11,6 +11,12 @@ export default async function ConfirmationPage({ params }: { params: { id: strin
   const booking = await prisma.booking.findUnique({ where: { id: params.id } });
   if (!booking) notFound();
   const settings = await getSettings();
+  // Chantier multi-jours : tous les jours du groupe.
+  const group = await prisma.booking.findMany({
+    where: { OR: [{ id: booking.id }, { groupId: booking.id }] },
+    orderBy: { startAt: "asc" },
+    select: { startAt: true },
+  });
 
   return (
     <main className="mx-auto flex min-h-screen max-w-lg flex-col items-center justify-center px-4 py-6 text-center">
@@ -24,10 +30,21 @@ export default async function ConfirmationPage({ params }: { params: { id: strin
       </p>
 
       <div className="card mt-6 w-full space-y-2 text-left">
-        <p>
-          <span className="font-semibold">📅 {formatDateFr(booking.startAt)}</span> à{" "}
-          <span className="font-semibold">{formatTimeFr(booking.startAt)}</span>
-        </p>
+        {group.length > 1 ? (
+          <>
+            <p className="font-semibold">📅 Chantier de {group.length} jours, dès 8h00 :</p>
+            <ul className="ml-6 list-disc">
+              {group.map((g, i) => (
+                <li key={i} className="capitalize">{formatDateFr(g.startAt)}</li>
+              ))}
+            </ul>
+          </>
+        ) : (
+          <p>
+            <span className="font-semibold">📅 {formatDateFr(booking.startAt)}</span> à{" "}
+            <span className="font-semibold">{formatTimeFr(booking.startAt)}</span>
+          </p>
+        )}
         <p>📍 {booking.address}, {booking.postalCode} {booking.city}</p>
         <p>🏢 {settings.companyName} — {settings.companyPhone}</p>
       </div>

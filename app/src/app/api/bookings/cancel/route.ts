@@ -5,7 +5,8 @@ import { deleteCalendarEvent } from "@/lib/google";
 
 export const dynamic = "force-dynamic";
 
-// POST /api/bookings/cancel { token } — annule le RDV et libère le créneau Google Agenda.
+// POST /api/bookings/cancel { token } — annule le RDV et libère le créneau
+// Google Agenda. Chantier multi-jours : annule tous les jours du groupe.
 export async function POST(req: NextRequest) {
   let token = "";
   try {
@@ -18,10 +19,16 @@ export async function POST(req: NextRequest) {
   if (booking.status === "annule") return NextResponse.json({ ok: true, already: true });
 
   const settings = await getSettings();
-  await deleteCalendarEvent(settings, booking.googleEventId);
-  await prisma.booking.update({
-    where: { id: booking.id },
+  const primaryId = booking.groupId || booking.id;
+  const group = await prisma.booking.findMany({
+    where: { OR: [{ id: primaryId }, { groupId: primaryId }], status: { not: "annule" } },
+  });
+  for (const b of group) {
+    await deleteCalendarEvent(settings, b.googleEventId);
+  }
+  await prisma.booking.updateMany({
+    where: { OR: [{ id: primaryId }, { groupId: primaryId }] },
     data: { status: "annule", cancelledAt: new Date() },
   });
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, cancelled: group.length });
 }

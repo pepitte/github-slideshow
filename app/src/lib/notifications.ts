@@ -5,11 +5,16 @@ import { sendEmail } from "./email";
 import { buildIcs } from "./ics";
 import { renderTemplate } from "./templates";
 
-/** SMS + email de confirmation, envoyés immédiatement après la réservation. */
-export async function sendConfirmation(booking: Booking, settings: Settings): Promise<void> {
-  const smsBody = renderTemplate(settings.smsConfirmation, booking, settings);
-  const emailSubject = renderTemplate(settings.emailSubject, booking, settings);
-  const emailBody = renderTemplate(settings.emailBody, booking, settings);
+/** SMS + email de confirmation, envoyés immédiatement après la réservation.
+ *  `groupDates` : chantier multi-jours ({{date}} devient « du … au … »). */
+export async function sendConfirmation(
+  booking: Booking,
+  settings: Settings,
+  groupDates?: Date[]
+): Promise<void> {
+  const smsBody = renderTemplate(settings.smsConfirmation, booking, settings, groupDates);
+  const emailSubject = renderTemplate(settings.emailSubject, booking, settings, groupDates);
+  const emailBody = renderTemplate(settings.emailBody, booking, settings, groupDates);
   await Promise.allSettled([
     sendSms(booking.phone, smsBody),
     sendEmail({

@@ -66,6 +66,9 @@ model Booking {
   lat            Float?
   lng            Float?
   kind           String    @default("devis") // devis | chantier
+  // Chantier multi-jours : les RDV d'un même groupe partagent le groupId
+  // (= id du RDV principal, qui porte le lien d'annulation et les photos).
+  groupId        String    @default("")
   projectType    String // entretien | taille_haie | debroussaillage | contrat_annuel | autre
   description    String    @default("")
   startAt        DateTime

@@ -5,22 +5,30 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import SlotPicker from "@/components/SlotPicker";
+import SlotPicker, { type ChantierSelection } from "@/components/SlotPicker";
 
 export default function CancelActions({
   token,
   alreadyCancelled,
+  isGroup = false,
 }: {
   token: string;
   alreadyCancelled: boolean;
+  /** Chantier multi-jours : annulation groupée uniquement (pas de report jour par jour). */
+  isGroup?: boolean;
 }) {
   const router = useRouter();
   const [cancelled, setCancelled] = useState(alreadyCancelled);
   const [rescheduling, setRescheduling] = useState(false);
   const [slot, setSlot] = useState<string | null>(null);
-  const [chantierDuration, setChantierDuration] = useState<"demi" | "journee" | null>(null);
+  const [chantierSel, setChantierSel] = useState<ChantierSelection>({ days: [], duration: null });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+
+  // Report d'un chantier : un seul nouveau jour à la fois.
+  const newStart = slot ?? chantierSel.days[0] ?? null;
+  const canConfirm =
+    Boolean(slot) || (chantierSel.days.length === 1 && Boolean(chantierSel.duration));
 
   async function cancel() {
     setBusy(true);
@@ -41,14 +49,14 @@ export default function CancelActions({
   }
 
   async function reschedule() {
-    if (!slot) return;
+    if (!newStart) return;
     setBusy(true);
     setError("");
     try {
       const res = await fetch("/api/bookings/reschedule", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, startAt: slot, chantierDuration }),
+        body: JSON.stringify({ token, startAt: newStart, chantierDuration: chantierSel.duration }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -58,7 +66,7 @@ export default function CancelActions({
       if (data.error === "creneau_indisponible") {
         setError("Ce créneau vient d'être pris. Choisissez-en un autre.");
         setSlot(null);
-        setChantierDuration(null);
+        setChantierSel({ days: [], duration: null });
       } else {
         setError("Impossible de déplacer ce rendez-vous. Appelez-nous directement.");
       }
@@ -88,16 +96,19 @@ export default function CancelActions({
         <h2 className="text-lg font-bold">Choisissez votre nouveau créneau</h2>
         <SlotPicker
           selected={slot}
-          selectedDuration={chantierDuration}
-          onSelect={(iso, duration) => {
-            setSlot(iso);
-            setChantierDuration(duration ?? null);
-          }}
+          onSelect={setSlot}
           token={token}
+          chantier={chantierSel}
+          onChantierChange={(sel) =>
+            setChantierSel({
+              days: sel.days.slice(-1),
+              duration: sel.days.length ? sel.duration : null,
+            })
+          }
         />
         {error && <p className="text-sm text-red-600">{error}</p>}
         <div className="flex flex-col gap-2">
-          <button className="btn-primary" disabled={!slot || busy} onClick={reschedule}>
+          <button className="btn-primary" disabled={!canConfirm || busy} onClick={reschedule}>
             {busy ? "Modification…" : "Confirmer le nouveau créneau"}
           </button>
           <button className="btn-secondary" onClick={() => setRescheduling(false)}>
@@ -113,11 +124,18 @@ export default function CancelActions({
 
   return (
     <div className="mt-6 space-y-3">
-      <button className="btn-primary w-full" onClick={() => setRescheduling(true)}>
-        Modifier le rendez-vous (nouveau créneau)
-      </button>
+      {isGroup ? (
+        <p className="rounded-xl bg-leaf-50 p-3 text-sm text-leaf-800">
+          Pour changer les dates de ce chantier de plusieurs jours : annulez-le (tous les
+          jours seront libérés), puis réservez de nouveau avec les nouvelles dates.
+        </p>
+      ) : (
+        <button className="btn-primary w-full" onClick={() => setRescheduling(true)}>
+          Modifier le rendez-vous (nouveau créneau)
+        </button>
+      )}
       <button onClick={cancel} disabled={busy} className="btn-primary w-full !bg-red-600 !shadow-red-600/25">
-        {busy ? "Annulation…" : "Annuler le rendez-vous"}
+        {busy ? "Annulation…" : isGroup ? "Annuler le chantier (tous les jours)" : "Annuler le rendez-vous"}
       </button>
       {error && <p className="text-sm text-red-600">{error}</p>}
       <Link href="/" className="btn-secondary w-full">← Conserver mon rendez-vous</Link>
