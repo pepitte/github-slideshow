@@ -65,9 +65,12 @@ Docs : `app/ARCHITECTURE.md`.
 ## Espaces & comptes
 
 - **Réservation client** : sans compte (parcours 60 s), 2 types de RDV — devis
-  fin de journée 16h30-20h (créneaux 30 min) ; chantier : le client choisit un
-  **jour** puis une **formule** « demi-journée 8h-12h » ou « journée entière »,
-  tous les chantiers commencent à 8h00 (un seul chantier par jour).
+  fin de journée 16h30-20h (créneaux 30 min) ; chantier : sélection d'**un ou
+  plusieurs jours** (multi-sélection). 1 jour → formule « demi-journée 8h-12h »
+  ou « journée entière » ; plusieurs jours → journée entière chacun. Tous les
+  chantiers commencent à 8h00 (un seul chantier par jour). Multi-jours = groupe
+  de RDV liés (groupId) : un SMS avec la période, une annulation groupée, pas de
+  report jour par jour (annuler puis re-réserver).
 - **Comptes particuliers** (`/compte`, inscription libre) : retrouvent leurs RDV
   par email (même ceux réservés sans compte), modifier/annuler.
 - **Espace professionnel** (`/pro`, inscription libre) : statut de dispo (🟢 devis
