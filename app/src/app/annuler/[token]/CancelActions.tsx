@@ -18,6 +18,7 @@ export default function CancelActions({
   const [cancelled, setCancelled] = useState(alreadyCancelled);
   const [rescheduling, setRescheduling] = useState(false);
   const [slot, setSlot] = useState<string | null>(null);
+  const [chantierDuration, setChantierDuration] = useState<"demi" | "journee" | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -47,7 +48,7 @@ export default function CancelActions({
       const res = await fetch("/api/bookings/reschedule", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, startAt: slot }),
+        body: JSON.stringify({ token, startAt: slot, chantierDuration }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -57,6 +58,7 @@ export default function CancelActions({
       if (data.error === "creneau_indisponible") {
         setError("Ce créneau vient d'être pris. Choisissez-en un autre.");
         setSlot(null);
+        setChantierDuration(null);
       } else {
         setError("Impossible de déplacer ce rendez-vous. Appelez-nous directement.");
       }
@@ -84,7 +86,15 @@ export default function CancelActions({
     return (
       <div className="mt-6 space-y-4">
         <h2 className="text-lg font-bold">Choisissez votre nouveau créneau</h2>
-        <SlotPicker selected={slot} onSelect={setSlot} token={token} />
+        <SlotPicker
+          selected={slot}
+          selectedDuration={chantierDuration}
+          onSelect={(iso, duration) => {
+            setSlot(iso);
+            setChantierDuration(duration ?? null);
+          }}
+          token={token}
+        />
         {error && <p className="text-sm text-red-600">{error}</p>}
         <div className="flex flex-col gap-2">
           <button className="btn-primary" disabled={!slot || busy} onClick={reschedule}>

@@ -25,9 +25,21 @@ export default function BookingWizard({
   chantierEnabled?: boolean;
 }) {
   const router = useRouter();
-  const [kind, setKind] = useState<"devis" | "chantier">("devis");
+  const [kind, setKindRaw] = useState<"devis" | "chantier">("devis");
   const [step, setStep] = useState(1);
   const [projectType, setProjectType] = useState("");
+  const [chantierDuration, setChantierDuration] = useState<"demi" | "journee" | null>(null);
+
+  // Changer de type de RDV remet à zéro le créneau choisi (les horaires diffèrent).
+  function setKind(next: "devis" | "chantier") {
+    setKindRaw((prev) => {
+      if (prev !== next) {
+        setSlot(null);
+        setChantierDuration(null);
+      }
+      return next;
+    });
+  }
 
   // Le 2e bouton du hero (#chantier) préselectionne le rendez-vous chantier.
   useEffect(() => {
@@ -38,6 +50,7 @@ export default function BookingWizard({
     applyHash();
     window.addEventListener("hashchange", applyHash);
     return () => window.removeEventListener("hashchange", applyHash);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chantierEnabled]);
   const [description, setDescription] = useState("");
   const [photos, setPhotos] = useState<string[]>([]);
@@ -104,6 +117,7 @@ export default function BookingWizard({
           postalCode: addr.postalCode,
           city: addr.city,
           kind,
+          chantierDuration,
           projectType,
           description,
           photos,
@@ -119,6 +133,7 @@ export default function BookingWizard({
       if (data.error === "creneau_indisponible") {
         setError("Ce créneau vient d'être réservé. Choisissez-en un autre.");
         setSlot(null);
+        setChantierDuration(null);
       } else if (data.error === "hors_zone") {
         setOutOfZone(true);
       } else {
@@ -331,14 +346,26 @@ export default function BookingWizard({
           </h3>
           <p className="text-sm text-leaf-800/70">
             {kind === "chantier"
-              ? "Interventions en journée, à partir de 8h. Seuls les créneaux disponibles sont affichés."
+              ? "Tous les chantiers commencent à 8h00 : demi-journée (8h-12h) ou journée entière."
               : "Seuls les créneaux réellement disponibles sont affichés."}
           </p>
-          <SlotPicker selected={slot} onSelect={setSlot} kind={kind} />
+          <SlotPicker
+            selected={slot}
+            selectedDuration={chantierDuration}
+            onSelect={(iso, duration) => {
+              setSlot(iso);
+              setChantierDuration(duration ?? null);
+            }}
+            kind={kind}
+          />
           {error && <p className="text-sm text-red-600">{error}</p>}
           <div className="flex flex-col gap-2 sm:flex-row">
             <button className="btn-secondary" onClick={() => setStep(2)}>← Retour</button>
-            <button className="btn-primary" disabled={!slot || busy} onClick={submitBooking}>
+            <button
+              className="btn-primary"
+              disabled={!slot || (kind === "chantier" && !chantierDuration) || busy}
+              onClick={submitBooking}
+            >
               {busy ? "Réservation…" : "Confirmer mon RDV ✓"}
             </button>
           </div>

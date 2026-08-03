@@ -18,9 +18,20 @@ type Booking = {
   projectType: string;
   description: string;
   startAt: string;
+  endAt: string;
   status: string;
   photos: Photo[];
 };
+
+/** Libellé de la formule chantier, déduit des heures (fin à 12h = demi-journée). */
+function chantierLabel(b: Booking): string {
+  const endH = new Date(b.endAt).toLocaleTimeString("fr-FR", {
+    timeZone: "Europe/Paris",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  return endH === "12:00" ? "Demi-journée (8h-12h)" : `Journée entière (8h → ${endH.replace(":", "h")})`;
+}
 type Lead = { id: string; name: string; phone: string; email: string; postalCode: string; message: string; createdAt: string };
 
 const STATUS_OPTIONS = [
@@ -145,6 +156,7 @@ export default function AdminDashboard() {
                     ✉️ <a className="text-leaf-700 underline" href={`mailto:${b.email}`}>{b.email}</a>
                   </p>
                   <p>📍 {b.address}, {b.postalCode} {b.city}</p>
+                  {b.kind === "chantier" && <p>🕗 {chantierLabel(b)}</p>}
                   {b.description && <p className="rounded-xl bg-sand-50 p-3">{b.description}</p>}
                   {b.photos.length > 0 && (
                     <div className="flex gap-2">

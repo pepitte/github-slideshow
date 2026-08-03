@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSettings } from "@/lib/settings";
-import { getAvailability } from "@/lib/availability";
+import { getAvailability, getChantierAvailability } from "@/lib/availability";
 
 export const dynamic = "force-dynamic";
 
-// GET /api/availability?kind=devis|chantier → [{ date, slots }]
+// GET /api/availability?kind=devis|chantier
+//  - devis    → { kind: "devis", days: [{ date, slots: [ISO...] }] }
+//  - chantier → { kind: "chantier", days: [{ date, startAt, demi, journee }] }
 // ?token=... (lien d'annulation) : exclut le RDV du client pour un report.
 export async function GET(req: NextRequest) {
   const settings = await getSettings();
@@ -21,6 +23,10 @@ export async function GET(req: NextRequest) {
       kind = booking.kind === "chantier" ? "chantier" : "devis";
     }
   }
-  const days = await getAvailability(settings, { kind, excludeBookingId: excludeId });
-  return NextResponse.json({ days });
+  if (kind === "chantier") {
+    const days = await getChantierAvailability(settings, excludeId);
+    return NextResponse.json({ kind, days });
+  }
+  const days = await getAvailability(settings, excludeId);
+  return NextResponse.json({ kind, days });
 }

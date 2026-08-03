@@ -88,6 +88,9 @@ paramètre `url` de l'outil Artifact.
 
 **Règle : toute modification visuelle/texte se fait aux DEUX endroits — l'app
 réelle (`app/`) ET la démo — puis commit + push + republication de l'artifact.**
+La démo est un site « une seule page » sans onglets artificiels (choix du
+client) : navigation intégrée comme le vrai site — « Se connecter » en haut
+(→ choix particulier/pro), « Espace gérant » dans le pied de page.
 
 ## Conventions
 
