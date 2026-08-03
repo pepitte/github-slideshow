@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSettings } from "@/lib/settings";
-import { isSlotAvailable, durationFor, type BookingKind } from "@/lib/availability";
+import {
+  isSlotAvailable,
+  checkChantier,
+  type ChantierDuration,
+} from "@/lib/availability";
 import { createCalendarEvent, deleteCalendarEvent } from "@/lib/google";
 import { sendConfirmation } from "@/lib/notifications";
 
@@ -14,10 +18,12 @@ export const maxDuration = 30;
 export async function POST(req: NextRequest) {
   let token = "";
   let startAtRaw = "";
+  let chantierDuration: ChantierDuration = "demi";
   try {
     const body = await req.json();
     token = String(body.token ?? "");
     startAtRaw = String(body.startAt ?? "");
+    if (body.chantierDuration === "journee") chantierDuration = "journee";
   } catch {}
   if (!token || !startAtRaw) {
     return NextResponse.json({ error: "token et startAt requis" }, { status: 400 });
@@ -34,12 +40,19 @@ export async function POST(req: NextRequest) {
   }
 
   const settings = await getSettings();
-  const kind = (booking.kind === "chantier" ? "chantier" : "devis") as BookingKind;
-  if (!(await isSlotAvailable(settings, startAt, { kind, excludeBookingId: booking.id }))) {
-    return NextResponse.json({ error: "creneau_indisponible" }, { status: 409 });
+  let endAt: Date;
+  if (booking.kind === "chantier") {
+    const chantierEnd = await checkChantier(settings, startAt, chantierDuration, booking.id);
+    if (!chantierEnd) {
+      return NextResponse.json({ error: "creneau_indisponible" }, { status: 409 });
+    }
+    endAt = chantierEnd;
+  } else {
+    if (!(await isSlotAvailable(settings, startAt, booking.id))) {
+      return NextResponse.json({ error: "creneau_indisponible" }, { status: 409 });
+    }
+    endAt = new Date(startAt.getTime() + settings.visitDurationMin * 60_000);
   }
-
-  const endAt = new Date(startAt.getTime() + durationFor(settings, kind) * 60_000);
 
   // Libère l'ancien événement Google avant d'enregistrer le nouveau créneau.
   await deleteCalendarEvent(settings, booking.googleEventId);

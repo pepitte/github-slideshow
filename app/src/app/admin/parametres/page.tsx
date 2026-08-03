@@ -376,20 +376,11 @@ export default function AdminSettingsPage() {
           </div>
           {s.chantierEnabled && (
             <>
-              <div>
-                <label className="label">Durée d&apos;une intervention (min)</label>
-                <input
-                  className="input max-w-[8rem]"
-                  type="number"
-                  min={30}
-                  step={30}
-                  value={s.chantierDurationMin}
-                  onChange={(e) => set({ chantierDurationMin: Number(e.target.value) })}
-                />
-                <p className="mt-1 text-xs text-leaf-800/60">
-                  120 = 2 h, 240 = demi-journée, 480 = journée entière.
-                </p>
-              </div>
+              <p className="text-sm text-leaf-800/70">
+                Le client choisit un jour puis une formule : <b>demi-journée (8h → 12h)</b> ou{" "}
+                <b>journée entière</b> (8h → fin d&apos;horaire). Tous les chantiers commencent
+                à l&apos;heure d&apos;ouverture ci-dessous.
+              </p>
               <div className="space-y-2">
                 <span className="label">Horaires des chantiers (en journée, dès 8h)</span>
                 {[1, 2, 3, 4, 5, 6, 7].map((d) => {
