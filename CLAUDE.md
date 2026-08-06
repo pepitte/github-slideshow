@@ -42,6 +42,8 @@ Docs : `app/ARCHITECTURE.md`.
 - Photos de réalisations : `app/public/realisations/1-3.jpg` (fournies par le
   client, optimisées) — jusqu'à **6** affichées ; gérables aussi depuis l'admin.
 - Titre landing : « Le devis pour votre jardin, réservé en 60 secondes ».
+- Les deux boutons du hero (devis / chantier) sont **blancs et identiques**
+  (classe `.btn-hero`).
 - Étapes « comment ça marche » : pastilles numérotées 1-2-3 (pas d'emojis).
   Étape 1 : « Expliquez-nous vos besoins en quelques mots et ajoutez des photos. »
 - Types de projet (sans emojis) : Entretien de jardin général, Taille de haie,
@@ -72,7 +74,10 @@ Docs : `app/ARCHITECTURE.md`.
   de RDV liés (groupId) : un SMS avec la période, une annulation groupée, pas de
   report jour par jour (annuler puis re-réserver).
 - **Comptes particuliers** (`/compte`, inscription libre) : retrouvent leurs RDV
-  par email (même ceux réservés sans compte), modifier/annuler.
+  par email (même ceux réservés sans compte), modifier/annuler. **Adresse
+  obligatoire à l'inscription** (Client.address/postalCode/city) → le tunnel
+  pré-remplit nom, tel, email et adresse pour un client connecté (bandeau vert,
+  modifiable si autre adresse). Réservation sans compte inchangée.
 - **Espace professionnel** (`/pro`, inscription libre) : statut de dispo (🔵 devis
   / 🟢 chantier / 🟠 sous confirmation / 🔴 indispo — code couleur unifié avec les
   RDV : bleu = devis, vert = chantier), dates, nb de jours, rayon.
