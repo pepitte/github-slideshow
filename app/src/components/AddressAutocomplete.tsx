@@ -32,9 +32,11 @@ function loadPlaces(onReady: () => void) {
 export default function AddressAutocomplete({
   value,
   onChange,
+  label = "Adresse du chantier *",
 }: {
   value: AddressValue;
   onChange: (v: AddressValue) => void;
+  label?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [placesActive, setPlacesActive] = useState(false);
@@ -70,7 +72,7 @@ export default function AddressAutocomplete({
     <div className="space-y-3">
       <div>
         <label className="label" htmlFor="address">
-          Adresse du chantier *
+          {label}
         </label>
         <input
           ref={inputRef}

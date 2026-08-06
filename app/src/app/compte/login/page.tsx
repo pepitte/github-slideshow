@@ -3,6 +3,7 @@
 // Connexion / création de compte particulier.
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import AddressAutocomplete, { type AddressValue } from "@/components/AddressAutocomplete";
 
 export default function ClientLoginPage() {
   const router = useRouter();
@@ -10,6 +11,7 @@ export default function ClientLoginPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [addr, setAddr] = useState<AddressValue>({ address: "", postalCode: "", city: "" });
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -23,7 +25,15 @@ export default function ClientLoginPage() {
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, phone, password }),
+        body: JSON.stringify({
+          name,
+          email,
+          phone,
+          password,
+          address: addr.address,
+          postalCode: addr.postalCode,
+          city: addr.city,
+        }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -80,6 +90,11 @@ export default function ClientLoginPage() {
               <label className="label" htmlFor="phone">Téléphone</label>
               <input id="phone" className="input" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
             </div>
+            <AddressAutocomplete value={addr} onChange={setAddr} label="Adresse de votre jardin *" />
+            <p className="-mt-1 text-xs text-leaf-800/60">
+              Enregistrée une fois pour toutes : vos prochaines réservations seront
+              pré-remplies.
+            </p>
           </>
         )}
         <div>

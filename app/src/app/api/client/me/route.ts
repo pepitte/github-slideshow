@@ -29,7 +29,14 @@ export async function GET() {
   });
 
   return NextResponse.json({
-    client: { name: client.name, email: client.email, phone: client.phone },
+    client: {
+      name: client.name,
+      email: client.email,
+      phone: client.phone,
+      address: client.address,
+      postalCode: client.postalCode,
+      city: client.city,
+    },
     bookings,
   });
 }
