@@ -19,6 +19,10 @@ body {
   .btn-secondary {
     @apply inline-flex items-center justify-center rounded-2xl border border-leaf-200 bg-white px-5 py-3 text-sm font-medium text-leaf-800 transition active:scale-[0.98];
   }
+  /* Boutons du hero : même style blanc pour les deux types de RDV */
+  .btn-hero {
+    @apply inline-flex w-full items-center justify-center rounded-2xl border border-leaf-200 bg-white px-6 py-4 text-base font-semibold text-leaf-800 shadow-sm transition active:scale-[0.98] sm:w-auto;
+  }
   .input {
     @apply w-full rounded-xl border border-leaf-200 bg-white px-4 py-3.5 text-base text-leaf-950 placeholder-leaf-950/35 outline-none transition focus:border-leaf-500 focus:ring-2 focus:ring-leaf-500/20;
   }

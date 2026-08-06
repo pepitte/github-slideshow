@@ -55,10 +55,10 @@ export default async function LandingPage() {
           Choisissez un créneau, on se déplace gratuitement pour évaluer votre projet.
           Confirmation immédiate par SMS.
         </p>
-        <a id="hero-cta" href="#reserver" className="btn-primary mt-5">
+        <a id="hero-cta" href="#reserver" className="btn-hero mt-5">
           Réserver mon RDV devis gratuit
         </a>
-        <a href="#chantier" className="btn-secondary mt-3 w-full sm:w-auto">
+        <a href="#chantier" className="btn-hero mt-3">
           Réserver un rendez-vous chantier
         </a>
         <p className="mt-4 text-sm font-medium text-leaf-800/70">
