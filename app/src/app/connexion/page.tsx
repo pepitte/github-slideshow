@@ -33,6 +33,12 @@ export default function ConnexionPage() {
       <Link href="/" className="mt-6 text-center text-sm text-leaf-700 underline">
         ← Retour à l&apos;accueil
       </Link>
+      <Link
+        href="/admin/login"
+        className="mt-8 text-center text-xs text-leaf-800/40 hover:text-leaf-800/70"
+      >
+        Accès gérant
+      </Link>
     </main>
   );
 }
