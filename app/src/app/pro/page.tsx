@@ -36,6 +36,31 @@ export default function ProDashboard() {
   const [month, setMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  // Pointage du jour (arrivée / départ)
+  const [pointage, setPointage] = useState<{ arrival: string; departure: string; validated: boolean } | null>(null);
+  const [pointing, setPointing] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/pro/pointage")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => data && setPointage(data))
+      .catch(() => {});
+  }, []);
+
+  async function pointer(action: "arrivee" | "depart") {
+    setPointing(true);
+    try {
+      const res = await fetch("/api/pro/pointage", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      const data = await res.json();
+      if (res.ok) setPointage((p) => ({ arrival: data.arrival, departure: data.departure, validated: p?.validated ?? false }));
+    } finally {
+      setPointing(false);
+    }
+  }
 
   useEffect(() => {
     fetch("/api/pro/me")
@@ -123,6 +148,39 @@ export default function ProDashboard() {
           Déconnexion
         </button>
       </div>
+
+      {/* Pointage du jour : visible par le gérant dans « Gestion terrain » */}
+      <section className="card mb-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="font-bold">Ma journée</h2>
+          {pointage?.validated && (
+            <span className="rounded-full bg-leaf-100 px-2.5 py-0.5 text-[11px] font-semibold text-leaf-800">
+              Validée par le gérant
+            </span>
+          )}
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-xl bg-sand-50 px-3 py-2 text-center">
+            <p className="text-xs text-leaf-800/60">Arrivée</p>
+            <p className="text-lg font-bold">{pointage?.arrival ? pointage.arrival.replace(":", "h") : "—"}</p>
+          </div>
+          <div className="rounded-xl bg-sand-50 px-3 py-2 text-center">
+            <p className="text-xs text-leaf-800/60">Départ</p>
+            <p className="text-lg font-bold">{pointage?.departure ? pointage.departure.replace(":", "h") : "—"}</p>
+          </div>
+        </div>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <button className="btn-secondary flex-1" disabled={pointing} onClick={() => pointer("arrivee")}>
+            {pointage?.arrival ? "Corriger l'arrivée" : "Pointer l'arrivée"}
+          </button>
+          <button className="btn-secondary flex-1" disabled={pointing} onClick={() => pointer("depart")}>
+            {pointage?.departure ? "Corriger le départ" : "Pointer le départ"}
+          </button>
+        </div>
+        <p className="text-xs text-leaf-800/50">
+          Pointez en arrivant sur le chantier et en repartant : le gérant voit et valide vos journées.
+        </p>
+      </section>
 
       {/* Statut */}
       <section className="card space-y-3">

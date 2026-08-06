@@ -122,6 +122,22 @@ model Pro {
   devisSlotsJson String   @default("[]")
   note           String   @default("")
   updatedAt      DateTime @updatedAt
+  workEntries    WorkEntry[]
+}
+
+// Pointage terrain d'un professionnel : une ligne par jour (heure de Paris).
+// Le gérant consulte et valide les journées dans /admin/terrain.
+model WorkEntry {
+  id        String   @id @default(cuid())
+  proId     String
+  pro       Pro      @relation(fields: [proId], references: [id], onDelete: Cascade)
+  date      String // AAAA-MM-JJ
+  arrival   String   @default("") // HH:mm
+  departure String   @default("") // HH:mm
+  validated Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+
+  @@unique([proId, date])
 }
 
 // Comptes particuliers (clients). La réservation reste possible sans compte ;
