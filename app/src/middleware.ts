@@ -13,7 +13,10 @@ export function middleware(req: NextRequest) {
       return NextResponse.redirect(url);
     }
   }
-  if (pathname === "/pro" || (pathname.startsWith("/pro/") && pathname !== "/pro/login")) {
+  if (
+    pathname === "/pro" ||
+    (pathname.startsWith("/pro/") && pathname !== "/pro/login" && pathname !== "/pro/reinitialiser")
+  ) {
     const cookie = req.cookies.get("pro_session")?.value;
     if (!cookie || !cookie.includes(".")) {
       const url = req.nextUrl.clone();
@@ -21,7 +24,12 @@ export function middleware(req: NextRequest) {
       return NextResponse.redirect(url);
     }
   }
-  if (pathname === "/compte" || (pathname.startsWith("/compte/") && pathname !== "/compte/login")) {
+  if (
+    pathname === "/compte" ||
+    (pathname.startsWith("/compte/") &&
+      pathname !== "/compte/login" &&
+      pathname !== "/compte/reinitialiser")
+  ) {
     const cookie = req.cookies.get("client_session")?.value;
     if (!cookie || !cookie.includes(".")) {
       const url = req.nextUrl.clone();

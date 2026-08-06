@@ -137,6 +137,11 @@ export default function ProLoginPage() {
           {mode === "register" && (
             <p className="mt-1 text-xs text-leaf-800/60">6 caractères minimum.</p>
           )}
+          {mode === "login" && (
+            <a href="/pro/reinitialiser" className="mt-1.5 inline-block text-xs text-leaf-700 underline">
+              Mot de passe oublié ?
+            </a>
+          )}
         </div>
         {error && <p className="text-sm text-red-600">{error}</p>}
         <button className="btn-primary w-full" disabled={busy}>

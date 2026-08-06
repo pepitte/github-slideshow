@@ -126,6 +126,11 @@ export default function ClientLoginPage() {
             onChange={(e) => setPassword(e.target.value)}
             required
           />
+          {mode === "login" && (
+            <a href="/compte/reinitialiser" className="mt-1.5 inline-block text-xs text-leaf-700 underline">
+              Mot de passe oublié ?
+            </a>
+          )}
         </div>
         {error && <p className="text-sm text-red-600">{error}</p>}
         <button className="btn-primary w-full" disabled={busy}>
