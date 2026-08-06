@@ -23,6 +23,7 @@ export default function AdminNav() {
       <img src="/logo.png" alt="Arboris Paysage" className="mr-2 h-8 w-auto object-contain" />
       <Link href="/admin" className={linkClass("/admin")}>Tableau de bord</Link>
       <Link href="/admin/planning" className={linkClass("/admin/planning")}>Planning</Link>
+      <Link href="/admin/terrain" className={linkClass("/admin/terrain")}>Terrain</Link>
       <Link href="/admin/pros" className={linkClass("/admin/pros")}>Professionnels</Link>
       <Link href="/admin/parametres" className={linkClass("/admin/parametres")}>Paramètres</Link>
       <button onClick={logout} className="ml-auto text-sm text-leaf-800/60 hover:text-leaf-800">

@@ -82,8 +82,13 @@ Docs : `app/ARCHITECTURE.md`.
   alerte orange tant que l'adresse manque (comptes créés avant la nouveauté).
 - **Espace professionnel** (`/pro`, inscription libre) : statut de dispo (🔵 devis
   / 🟢 chantier / 🟠 sous confirmation / 🔴 indispo — code couleur unifié avec les
-  RDV : bleu = devis, vert = chantier), dates, nb de jours, rayon.
-  Vue gérant : onglet « Professionnels » dans `/admin`.
+  RDV : bleu = devis, vert = chantier), créneaux devis, dates. **Adresse de
+  départ + rayon demandés à l'inscription** (Pro.baseAddress/basePostalCode/
+  baseCity/radiusKm) pour connaître le secteur ; la section « Vos informations »
+  a été retirée de `/pro`. En bas de `/pro` : **le même agenda que le gérant**
+  (composant partagé `AgendaView`, API `GET /api/pro/planning`) mais **sans les
+  téléphones** (prop `showContacts`). Vue gérant : onglet « Professionnels »
+  dans `/admin` (adresse complète affichée).
 - **Connexion unifiée** : `/connexion` (choix particulier / professionnel).
 - **Planning patron** (`/admin/planning`, réservé gérant) : agenda type
   calendrier avec vues **Mois / Semaine / Jour** (défaut : semaine), navigation
