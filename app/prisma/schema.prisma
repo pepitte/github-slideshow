@@ -121,6 +121,9 @@ model Pro {
   // Créneaux devis validés (fin de journée, pas de 30 min) : ["18:00","18:30",...]
   devisSlotsJson String   @default("[]")
   note           String   @default("")
+  // Réinitialisation de mot de passe (lien email valable 1 h)
+  resetToken     String   @default("")
+  resetExpiry    DateTime?
   updatedAt      DateTime @updatedAt
   workEntries    WorkEntry[]
 }
@@ -153,6 +156,9 @@ model Client {
   address      String   @default("")
   postalCode   String   @default("")
   city         String   @default("")
+  // Réinitialisation de mot de passe (lien email valable 1 h)
+  resetToken   String   @default("")
+  resetExpiry  DateTime?
 }
 
 // Prospects hors zone d'intervention (formulaire de contact)
