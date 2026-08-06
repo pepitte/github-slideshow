@@ -10,6 +10,7 @@ type Pro = {
   name: string;
   email: string;
   phone: string;
+  baseAddress: string;
   baseCity: string;
   basePostalCode: string;
   radiusKm: number;
@@ -87,7 +88,10 @@ export default function AdminProsPage() {
                 <div>
                   <p className="font-semibold">{p.name}</p>
                   <p className="text-sm text-leaf-800/70">
-                    {p.baseCity || p.basePostalCode ? `${p.baseCity} ${p.basePostalCode}`.trim() + " · " : ""}
+                    {[p.baseAddress, `${p.basePostalCode} ${p.baseCity}`.trim()]
+                      .filter(Boolean)
+                      .join(", ")}
+                    {p.baseAddress || p.baseCity || p.basePostalCode ? " · " : ""}
                     rayon {p.radiusKm} km
                   </p>
                 </div>

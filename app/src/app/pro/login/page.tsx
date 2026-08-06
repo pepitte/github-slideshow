@@ -3,6 +3,7 @@
 // Connexion / inscription libre des professionnels.
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import AddressAutocomplete, { type AddressValue } from "@/components/AddressAutocomplete";
 
 export default function ProLoginPage() {
   const router = useRouter();
@@ -10,6 +11,8 @@ export default function ProLoginPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [addr, setAddr] = useState<AddressValue>({ address: "", postalCode: "", city: "" });
+  const [radiusKm, setRadiusKm] = useState(30);
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -23,7 +26,16 @@ export default function ProLoginPage() {
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, phone, password }),
+        body: JSON.stringify({
+          name,
+          email,
+          phone,
+          password,
+          address: addr.address,
+          postalCode: addr.postalCode,
+          city: addr.city,
+          radiusKm,
+        }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -80,6 +92,22 @@ export default function ProLoginPage() {
             <div>
               <label className="label" htmlFor="phone">Téléphone</label>
               <input id="phone" className="input" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
+            </div>
+            <AddressAutocomplete value={addr} onChange={setAddr} label="Adresse de départ *" />
+            <p className="-mt-1 text-xs text-leaf-800/60">
+              Elle indique votre secteur d&apos;intervention au gérant.
+            </p>
+            <div>
+              <label className="label" htmlFor="radius">Rayon d&apos;intervention (km)</label>
+              <input
+                id="radius"
+                className="input"
+                type="number"
+                min={0}
+                max={200}
+                value={radiusKm}
+                onChange={(e) => setRadiusKm(Number(e.target.value))}
+              />
             </div>
           </>
         )}
