@@ -85,11 +85,14 @@ Docs : `app/ARCHITECTURE.md`.
   RDV : bleu = devis, vert = chantier), dates, nb de jours, rayon.
   Vue gérant : onglet « Professionnels » dans `/admin`.
 - **Connexion unifiée** : `/connexion` (choix particulier / professionnel).
-- **Planning patron** (`/admin/planning`, réservé gérant) : calendrier mensuel
-  croisant RDV clients (point bleu = devis, vert = chantier) et dispos déclarées
-  des pros (carré couleur = statut) ; clic sur un jour → détail (RDV avec tel,
-  pros avec statut/créneaux devis/rayon). API `GET /api/admin/planning?month=`.
-  Onglet « Planning » aussi dans la démo (vue gérant).
+- **Planning patron** (`/admin/planning`, réservé gérant) : agenda type
+  calendrier avec vues **Mois / Semaine / Jour** (défaut : semaine), navigation
+  ← Aujourd'hui →. Semaine/Jour = grille horaire 7h-20h avec RDV en blocs
+  colorés (bleu = devis, vert = chantier, chevauchements en colonnes) ; en-têtes
+  de jours avec carrés de dispo des pros ; encart « Aujourd'hui » à droite.
+  Clic jour/bloc → détail (RDV avec tel, pros avec statut/heures devis/rayon).
+  API `GET /api/admin/planning?month=` ou `?from=&to=` (AAAA-MM-JJ).
+  Onglet « Planning » identique dans la démo (vue gérant).
 - 3 sessions indépendantes (cookies séparés) : admin, pro, client. Mots de passe
   hachés (scrypt), sessions signées HMAC (AUTH_SECRET).
 - **Déploiement** : Vercel plan Hobby (cron rappels 1×/jour à 6h UTC). Fusion des
