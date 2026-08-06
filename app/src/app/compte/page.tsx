@@ -3,6 +3,7 @@
 // Espace particulier : liste des rendez-vous (à venir / passés), gestion.
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import AddressAutocomplete, { type AddressValue } from "@/components/AddressAutocomplete";
 
 type Booking = {
   id: string;
@@ -15,7 +16,14 @@ type Booking = {
   status: string;
   cancelToken: string;
 };
-type Client = { name: string; email: string; phone: string };
+type Client = {
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+  postalCode: string;
+  city: string;
+};
 
 const PROJECT_LABELS: Record<string, string> = {
   entretien: "Entretien de jardin général",
@@ -47,6 +55,24 @@ export default function ClientAccount() {
   const [client, setClient] = useState<Client | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
+  // Fiche « Mes coordonnées » (modifiable)
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [addr, setAddr] = useState<AddressValue>({ address: "", postalCode: "", city: "" });
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const [saved, setSaved] = useState(false);
+
+  function fillForm(c: Client) {
+    setName(c.name ?? "");
+    setPhone(c.phone ?? "");
+    setAddr({
+      address: c.address ?? "",
+      postalCode: c.postalCode ?? "",
+      city: c.city ?? "",
+    });
+  }
 
   useEffect(() => {
     fetch("/api/client/me")
@@ -59,10 +85,42 @@ export default function ClientAccount() {
       })
       .then((data) => {
         setClient(data.client);
+        if (data.client) fillForm(data.client);
         setBookings(data.bookings ?? []);
       })
       .finally(() => setLoading(false));
   }, []);
+
+  async function saveProfile() {
+    setSaving(true);
+    setSaveError("");
+    try {
+      const res = await fetch("/api/client/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          phone,
+          address: addr.address,
+          postalCode: addr.postalCode,
+          city: addr.city,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setClient(data.client);
+        setEditing(false);
+        setSaved(true);
+        setTimeout(() => setSaved(false), 3000);
+      } else {
+        setSaveError(data.error || "Une erreur est survenue.");
+      }
+    } catch {
+      setSaveError("Erreur réseau, réessayez.");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   async function logout() {
     await fetch("/api/client/logout", { method: "POST" });
@@ -114,6 +172,66 @@ export default function ClientAccount() {
           <div className="mb-6 flex flex-col gap-2 sm:flex-row">
             <Link href="/#reserver" className="btn-primary">Réserver un rendez-vous</Link>
           </div>
+
+          {/* Coordonnées enregistrées : reprises automatiquement à chaque réservation */}
+          <section className="card mb-6">
+            <div className="flex items-start justify-between gap-2">
+              <h2 className="font-bold">Mes coordonnées</h2>
+              {!editing && (
+                <button
+                  onClick={() => {
+                    if (client) fillForm(client);
+                    setEditing(true);
+                  }}
+                  className="text-sm font-semibold text-leaf-700 underline"
+                >
+                  Modifier
+                </button>
+              )}
+            </div>
+
+            {!editing ? (
+              <div className="mt-2 space-y-1 text-sm text-leaf-800/80">
+                <p>{client?.phone || "Téléphone non renseigné"}</p>
+                <p>{client?.email}</p>
+                {client?.address ? (
+                  <p>
+                    {client.address}, {client.postalCode} {client.city}
+                  </p>
+                ) : (
+                  <p className="font-medium text-amber-700">
+                    Adresse non renseignée — ajoutez-la pour ne plus la ressaisir à chaque
+                    réservation.
+                  </p>
+                )}
+                {saved && <p className="font-medium text-leaf-700">✓ Enregistré</p>}
+              </div>
+            ) : (
+              <div className="mt-3 space-y-4">
+                <div>
+                  <label className="label" htmlFor="c-name">Prénom / nom</label>
+                  <input id="c-name" className="input" value={name} onChange={(e) => setName(e.target.value)} />
+                </div>
+                <div>
+                  <label className="label" htmlFor="c-phone">Téléphone</label>
+                  <input id="c-phone" className="input" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
+                </div>
+                <AddressAutocomplete value={addr} onChange={setAddr} label="Adresse de votre jardin *" />
+                <p className="-mt-1 text-xs text-leaf-800/60">
+                  Reprise automatiquement à chaque nouvelle réservation.
+                </p>
+                {saveError && <p className="text-sm text-red-600">{saveError}</p>}
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <button className="btn-secondary" onClick={() => setEditing(false)}>
+                    Annuler
+                  </button>
+                  <button className="btn-primary" onClick={saveProfile} disabled={saving}>
+                    {saving ? "Enregistrement…" : "Enregistrer"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </section>
 
           <h2 className="mb-3 text-lg font-bold">À venir ({upcoming.length})</h2>
           {upcoming.length === 0 ? (
