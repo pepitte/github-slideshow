@@ -3,6 +3,7 @@
 // Espace professionnel : statut de disponibilité, dates, nombre de jours, rayon.
 import { useEffect, useMemo, useState } from "react";
 import { PRO_STATUS_META, PRO_STATUS_ORDER } from "@/lib/proStatus";
+import AgendaView from "@/components/AgendaView";
 
 type Pro = {
   name: string;
@@ -112,7 +113,7 @@ export default function ProDashboard() {
   }
 
   return (
-    <main className="mx-auto max-w-lg px-4 py-6 sm:max-w-2xl">
+    <main className="mx-auto max-w-lg px-4 py-6 sm:max-w-4xl">
       <div className="mb-5 flex items-center justify-between border-b border-leaf-100 pb-4">
         <div>
           <p className="text-xs uppercase tracking-wide text-leaf-800/50">Espace professionnel</p>
@@ -228,66 +229,17 @@ export default function ProDashboard() {
         </div>
       </section>
 
-      {/* Détails */}
-      <section className="card mt-4 space-y-3">
-        <h2 className="font-bold">Vos informations</h2>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <label className="label">Nombre de journées disponibles</label>
-            <input
-              className="input"
-              type="number"
-              min={0}
-              value={pro.availableDays}
-              onChange={(e) => set({ availableDays: Number(e.target.value) })}
-            />
-          </div>
-          <div>
-            <label className="label">Rayon d&apos;intervention (km)</label>
-            <input
-              className="input"
-              type="number"
-              min={0}
-              value={pro.radiusKm}
-              onChange={(e) => set({ radiusKm: Number(e.target.value) })}
-            />
-          </div>
-          <div>
-            <label className="label">Ville de départ</label>
-            <input className="input" value={pro.baseCity} onChange={(e) => set({ baseCity: e.target.value })} />
-          </div>
-          <div>
-            <label className="label">Code postal</label>
-            <input
-              className="input"
-              inputMode="numeric"
-              maxLength={5}
-              value={pro.basePostalCode}
-              onChange={(e) => set({ basePostalCode: e.target.value.replace(/\D/g, "") })}
-            />
-          </div>
-          <div>
-            <label className="label">Téléphone</label>
-            <input className="input" type="tel" value={pro.phone} onChange={(e) => set({ phone: e.target.value })} />
-          </div>
-        </div>
-        <div>
-          <label className="label">Note (facultatif)</label>
-          <textarea
-            className="input min-h-[70px]"
-            placeholder="Précisions sur vos disponibilités, matériel, spécialités…"
-            value={pro.note}
-            onChange={(e) => set({ note: e.target.value })}
-          />
-        </div>
-      </section>
-
       <div className="sticky bottom-4 mt-4 flex items-center gap-3">
         <button className="btn-primary" onClick={save} disabled={saving}>
           {saving ? "Enregistrement…" : "Enregistrer mes disponibilités"}
         </button>
         {saved && <span className="text-sm font-semibold text-leaf-700">✓ Enregistré</span>}
       </div>
+
+      {/* Agenda de l'entreprise (le même que côté gérant, sans les téléphones) */}
+      <section className="mt-8 border-t border-leaf-100 pt-6">
+        <AgendaView endpoint="/api/pro/planning" loginPath="/pro/login" />
+      </section>
     </main>
   );
 }

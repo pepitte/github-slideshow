@@ -21,10 +21,20 @@ export async function POST(req: NextRequest) {
   const email = String(body.email ?? "").trim().toLowerCase();
   const password = String(body.password ?? "");
   const phone = String(body.phone ?? "").trim();
+  const address = String(body.address ?? "").trim();
+  const postalCode = String(body.postalCode ?? "").trim();
+  const city = String(body.city ?? "").trim();
+  const radiusKm = Math.max(0, Math.min(200, Number(body.radiusKm) || 30));
 
   if (!name || !/.+@.+\..+/.test(email) || password.length < 6) {
     return NextResponse.json(
       { error: "Nom, email valide et mot de passe (6 caractères min) requis" },
+      { status: 400 }
+    );
+  }
+  if (!address || !/^\d{5}$/.test(postalCode)) {
+    return NextResponse.json(
+      { error: "Adresse et code postal (5 chiffres) requis" },
       { status: 400 }
     );
   }
@@ -33,7 +43,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "email_existe" }, { status: 409 });
   }
   const pro = await prisma.pro.create({
-    data: { name, email, phone, passwordHash: hashPassword(password) },
+    data: {
+      name,
+      email,
+      phone,
+      baseAddress: address,
+      basePostalCode: postalCode,
+      baseCity: city,
+      radiusKm,
+      passwordHash: hashPassword(password),
+    },
   });
   const res = NextResponse.json({ ok: true });
   res.cookies.set(PRO_COOKIE_NAME, createProToken(pro.id), {

@@ -107,6 +107,8 @@ model Pro {
   email          String   @unique
   passwordHash   String
   phone          String   @default("")
+  // Adresse de départ (secteur) demandée à l'inscription
+  baseAddress    String   @default("")
   baseCity       String   @default("")
   basePostalCode String   @default("")
   radiusKm       Int      @default(30)
