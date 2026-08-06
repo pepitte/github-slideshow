@@ -65,6 +65,37 @@ export default function BookingWizard({
   const [outOfZone, setOutOfZone] = useState(false);
   const [leadMessage, setLeadMessage] = useState("");
   const [leadSent, setLeadSent] = useState(false);
+  const [prefilled, setPrefilled] = useState(false);
+
+  // Client connecté : coordonnées et adresse pré-remplies (plus rien à ressaisir).
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/client/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        const c = data?.client;
+        if (cancelled || !c) return;
+        const parts = String(c.name ?? "").trim().split(/\s+/);
+        setFirstName((v) => v || parts[0] || "");
+        setLastName((v) => v || parts.slice(1).join(" "));
+        setPhone((v) => v || c.phone || "");
+        setEmail((v) => v || c.email || "");
+        setAddr((v) =>
+          v.address
+            ? v
+            : {
+                address: c.address || "",
+                postalCode: c.postalCode || "",
+                city: c.city || "",
+              }
+        );
+        if (c.address) setPrefilled(true);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const step2Valid =
     firstName.trim() &&
@@ -275,6 +306,12 @@ export default function BookingWizard({
       {step === 2 && (
         <div className="space-y-4">
           <h3 className="text-lg font-bold">Vos coordonnées</h3>
+          {prefilled && (
+            <p className="rounded-xl bg-leaf-50 px-3 py-2 text-sm text-leaf-800">
+              Vos informations sont pré-remplies depuis votre compte — modifiez-les si
+              l&apos;intervention a lieu à une autre adresse.
+            </p>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="label" htmlFor="firstName">Prénom *</label>

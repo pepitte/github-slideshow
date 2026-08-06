@@ -21,6 +21,9 @@ export async function POST(req: NextRequest) {
   const email = String(body.email ?? "").trim().toLowerCase();
   const password = String(body.password ?? "");
   const phone = String(body.phone ?? "").trim();
+  const address = String(body.address ?? "").trim();
+  const postalCode = String(body.postalCode ?? "").trim();
+  const city = String(body.city ?? "").trim();
 
   if (!name || !/.+@.+\..+/.test(email) || password.length < 6) {
     return NextResponse.json(
@@ -28,11 +31,25 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   }
+  if (!address || !/^\d{5}$/.test(postalCode)) {
+    return NextResponse.json(
+      { error: "Adresse et code postal (5 chiffres) requis" },
+      { status: 400 }
+    );
+  }
   if (await prisma.client.findUnique({ where: { email } })) {
     return NextResponse.json({ error: "email_existe" }, { status: 409 });
   }
   const client = await prisma.client.create({
-    data: { name, email, phone, passwordHash: hashPassword(password) },
+    data: {
+      name,
+      email,
+      phone,
+      address,
+      postalCode,
+      city,
+      passwordHash: hashPassword(password),
+    },
   });
   const res = NextResponse.json({ ok: true });
   res.cookies.set(CLIENT_COOKIE_NAME, createClientToken(client.id), {
