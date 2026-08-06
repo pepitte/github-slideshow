@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { PRO_STATUS_META, PRO_STATUS_ORDER } from "@/lib/proStatus";
 import AgendaView from "@/components/AgendaView";
+import PhotoUpload from "@/components/PhotoUpload";
 
 type Pro = {
   name: string;
@@ -36,16 +37,40 @@ export default function ProDashboard() {
   const [month, setMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  // Pointage du jour (arrivée / départ)
+  // Pointage du jour (arrivée / départ) + photos avant/après du chantier
   const [pointage, setPointage] = useState<{ arrival: string; departure: string; validated: boolean } | null>(null);
   const [pointing, setPointing] = useState(false);
+  const [photosBefore, setPhotosBefore] = useState<string[]>([]);
+  const [photosAfter, setPhotosAfter] = useState<string[]>([]);
+  const [photosSaved, setPhotosSaved] = useState(false);
 
   useEffect(() => {
     fetch("/api/pro/pointage")
       .then((r) => (r.ok ? r.json() : null))
-      .then((data) => data && setPointage(data))
+      .then((data) => {
+        if (!data) return;
+        setPointage(data);
+        setPhotosBefore(data.photosBefore ?? []);
+        setPhotosAfter(data.photosAfter ?? []);
+      })
       .catch(() => {});
   }, []);
+
+  async function savePhotos(before: string[], after: string[]) {
+    setPhotosBefore(before);
+    setPhotosAfter(after);
+    try {
+      const res = await fetch("/api/pro/pointage", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ photosBefore: before, photosAfter: after }),
+      });
+      if (res.ok) {
+        setPhotosSaved(true);
+        setTimeout(() => setPhotosSaved(false), 2500);
+      }
+    } catch {}
+  }
 
   async function pointer(action: "arrivee" | "depart") {
     setPointing(true);
@@ -180,6 +205,25 @@ export default function ProDashboard() {
         <p className="text-xs text-leaf-800/50">
           Pointez en arrivant sur le chantier et en repartant : le gérant voit et valide vos journées.
         </p>
+
+        <div className="space-y-3 border-t border-leaf-100 pt-3">
+          <PhotoUpload
+            photos={photosBefore}
+            onChange={(p) => savePhotos(p, photosAfter)}
+            label="Photos avant le chantier (4 max)"
+            maxPhotos={4}
+          />
+          <PhotoUpload
+            photos={photosAfter}
+            onChange={(p) => savePhotos(photosBefore, p)}
+            label="Photos après le chantier (4 max)"
+            maxPhotos={4}
+          />
+          <p className="text-xs text-leaf-800/50">
+            Enregistrées automatiquement — le gérant les voit dans sa gestion terrain.
+            {photosSaved && <span className="ml-2 font-semibold text-leaf-700">✓ Enregistré</span>}
+          </p>
+        </div>
       </section>
 
       {/* Statut */}

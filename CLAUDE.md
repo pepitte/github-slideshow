@@ -107,7 +107,11 @@ Docs : `app/ARCHITECTURE.md`.
   API `GET /api/admin/planning?month=` ou `?from=&to=` (AAAA-MM-JJ).
   Onglet « Planning » identique dans la démo (vue gérant).
 - 3 sessions indépendantes (cookies séparés) : admin, pro, client. Mots de passe
-  hachés (scrypt), sessions signées HMAC (AUTH_SECRET).
+  hachés (scrypt), sessions signées HMAC (AUTH_SECRET). **Mot de passe oublié**
+  pour clients et pros : lien « Mot de passe oublié ? » sur les pages de
+  connexion → email avec lien 1 h à usage unique (`/compte/reinitialiser`,
+  `/pro/reinitialiser`, composant partagé PasswordResetForm) ; nécessite la clé
+  Resend en prod (sinon email simulé en console).
 - **Déploiement** : Vercel plan Hobby (cron rappels 1×/jour à 6h UTC). Fusion des
   PR vers `main` via l'outil GitHub (le client n'a pas à le faire) → redeploy auto.
 
