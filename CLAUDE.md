@@ -98,8 +98,10 @@ Docs : `app/ARCHITECTURE.md`.
 ## Démo interactive (artifact)
 
 Réplique cliquable du produit, publiée sur claude.ai :
-https://claude.ai/code/artifact/991329a6-47a5-4fff-a844-90d29c988b42
-Source : conservée dans le scratchpad de session (`demo-rdv-paysagiste.html`) —
+https://claude.ai/code/artifact/7c97e313-7c8c-4428-9ff7-ce2e4b3836c0
+(l'URL précédente `991329a6-…` est devenue impossible à republier — erreur 403
+persistante côté service ; elle reste figée sur la version du 3 août.)
+Source : conservée dans le scratchpad de session (`demo-arboris-v2.html`) —
 si absente (nouvelle session), la reconstruire n'est pas nécessaire sauf demande ;
 pour la mettre à jour depuis une autre session, passer l'URL ci-dessus au
 paramètre `url` de l'outil Artifact.
