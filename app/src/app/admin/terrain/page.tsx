@@ -11,8 +11,18 @@ type Entry = {
   date: string;
   arrival: string;
   departure: string;
+  photosBeforeJson: string;
+  photosAfterJson: string;
   validated: boolean;
 };
+function photosOf(json: string): string[] {
+  try {
+    const arr = JSON.parse(json || "[]");
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
+  }
+}
 type ProLite = { id: string; name: string; phone: string; baseCity: string };
 type Period = "jour" | "semaine" | "perso";
 
@@ -58,6 +68,7 @@ export default function TerrainPage() {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [pros, setPros] = useState<ProLite[]>([]);
   const [loading, setLoading] = useState(true);
+  const [openPhotos, setOpenPhotos] = useState<string | null>(null);
 
   const todayKey = keyOf(new Date());
   const range = useMemo(() => {
@@ -227,6 +238,7 @@ export default function TerrainPage() {
                 <th className="px-4 py-3">Arrivée</th>
                 <th className="px-4 py-3">Départ</th>
                 <th className="px-4 py-3">Total heures</th>
+                <th className="px-4 py-3">Photos</th>
                 <th className="px-4 py-3">Statut</th>
                 <th className="px-4 py-3">Journée</th>
               </tr>
@@ -234,12 +246,17 @@ export default function TerrainPage() {
             <tbody>
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-leaf-800/50">
+                  <td colSpan={8} className="px-4 py-8 text-center text-leaf-800/50">
                     Aucune journée pointée sur cette période.
                   </td>
                 </tr>
               )}
-              {rows.map(({ pro, date, entry }) => (
+              {rows.map(({ pro, date, entry }) => {
+                const before = entry ? photosOf(entry.photosBeforeJson) : [];
+                const after = entry ? photosOf(entry.photosAfterJson) : [];
+                const nbPhotos = before.length + after.length;
+                return (
+                <>
                 <tr key={`${pro.id}-${date}`} className="border-b border-leaf-100/60 last:border-0">
                   <td className="px-4 py-3">
                     <p className="font-semibold">{pro.name}</p>
@@ -249,6 +266,18 @@ export default function TerrainPage() {
                   <td className="px-4 py-3">{fmtH(entry?.arrival ?? "")}</td>
                   <td className="px-4 py-3">{fmtH(entry?.departure ?? "")}</td>
                   <td className="px-4 py-3 font-semibold">{entry ? totalLabel(entry) : "—"}</td>
+                  <td className="px-4 py-3">
+                    {nbPhotos > 0 && entry ? (
+                      <button
+                        className="text-xs font-semibold text-leaf-700 underline"
+                        onClick={() => setOpenPhotos(openPhotos === entry.id ? null : entry.id)}
+                      >
+                        {nbPhotos} photo{nbPhotos > 1 ? "s" : ""}
+                      </button>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
                   <td className="px-4 py-3">{statusBadge(entry)}</td>
                   <td className="px-4 py-3">
                     {entry && entry.arrival && entry.departure ? (
@@ -272,7 +301,37 @@ export default function TerrainPage() {
                     )}
                   </td>
                 </tr>
-              ))}
+                {entry && openPhotos === entry.id && (
+                  <tr key={`${pro.id}-${date}-photos`} className="border-b border-leaf-100/60">
+                    <td colSpan={8} className="bg-sand-50 px-4 py-3">
+                      <div className="flex flex-wrap gap-6">
+                        {[["Avant le chantier", before] as const, ["Après le chantier", after] as const].map(
+                          ([label, list]) =>
+                            list.length > 0 && (
+                              <div key={label}>
+                                <p className="mb-1.5 text-xs font-semibold text-leaf-800/60">{label}</p>
+                                <div className="flex flex-wrap gap-2">
+                                  {list.map((src, i) => (
+                                    <a key={i} href={src} target="_blank" rel="noreferrer">
+                                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                                      <img
+                                        src={src}
+                                        alt={`${label} ${i + 1}`}
+                                        className="h-24 w-24 rounded-xl border border-leaf-200 object-cover"
+                                      />
+                                    </a>
+                                  ))}
+                                </div>
+                              </div>
+                            )
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                </>
+                );
+              })}
             </tbody>
           </table>
         </div>

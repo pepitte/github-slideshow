@@ -137,6 +137,9 @@ model WorkEntry {
   date      String // AAAA-MM-JJ
   arrival   String   @default("") // HH:mm
   departure String   @default("") // HH:mm
+  // Photos du chantier prises par le pro (data URLs JSON, 4 max chacune)
+  photosBeforeJson String @default("[]")
+  photosAfterJson  String @default("[]")
   validated Boolean  @default(false)
   updatedAt DateTime @updatedAt
 
