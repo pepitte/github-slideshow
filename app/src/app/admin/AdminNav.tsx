@@ -19,7 +19,8 @@ export default function AdminNav() {
 
   return (
     <nav className="mb-6 flex items-center gap-2 border-b border-leaf-100 pb-4">
-      <span className="mr-2 text-xl" aria-hidden>🌿</span>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/logo.png" alt="Arboris Paysage" className="mr-2 h-8 w-auto object-contain" />
       <Link href="/admin" className={linkClass("/admin")}>Tableau de bord</Link>
       <Link href="/admin/planning" className={linkClass("/admin/planning")}>Planning</Link>
       <Link href="/admin/pros" className={linkClass("/admin/pros")}>Professionnels</Link>

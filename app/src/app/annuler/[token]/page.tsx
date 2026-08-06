@@ -26,7 +26,7 @@ export default async function CancelPage({ params }: { params: { token: string }
       <div className="card mt-5 space-y-1">
         {isGroup ? (
           <>
-            <p className="font-semibold">📅 Chantier de {group.length} jours, dès 8h00 :</p>
+            <p className="font-semibold">Chantier de {group.length} jours, dès 8h00 :</p>
             <ul className="ml-5 list-disc text-sm text-leaf-900">
               {group.map((g, i) => (
                 <li key={i} className="capitalize">{formatDateFr(g.startAt)}</li>
@@ -35,11 +35,11 @@ export default async function CancelPage({ params }: { params: { token: string }
           </>
         ) : (
           <p className="font-semibold">
-            📅 {formatDateFr(booking.startAt)} à {formatTimeFr(booking.startAt)}
+            {formatDateFr(booking.startAt)} à {formatTimeFr(booking.startAt)}
           </p>
         )}
         <p className="text-sm text-leaf-800/80">
-          📍 {booking.address}, {booking.postalCode} {booking.city}
+          {booking.address}, {booking.postalCode} {booking.city}
         </p>
       </div>
       <CancelActions

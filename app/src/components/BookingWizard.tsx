@@ -207,7 +207,7 @@ export default function BookingWizard({
   if (outOfZone) {
     return (
       <div className="card space-y-4" id="reserver">
-        <h3 className="text-lg font-bold">Nous ne couvrons pas encore votre secteur 😕</h3>
+        <h3 className="text-lg font-bold">Nous ne couvrons pas encore votre secteur</h3>
         {leadSent ? (
           <p className="text-leaf-800">
             Merci ! Nous avons bien noté votre demande et nous vous recontacterons si nous
@@ -409,8 +409,8 @@ export default function BookingWizard({
               {busy
                 ? "Réservation…"
                 : kind === "chantier" && chantierSel.days.length > 1
-                  ? `Confirmer (${chantierSel.days.length} jours) ✓`
-                  : "Confirmer mon RDV ✓"}
+                  ? `Confirmer (${chantierSel.days.length} jours)`
+                  : "Confirmer mon RDV"}
             </button>
           </div>
           <p className="text-center text-xs text-leaf-800/50">

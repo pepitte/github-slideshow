@@ -35,7 +35,9 @@ export default function AdminLoginPage() {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-4">
-      <h1 className="mb-6 text-center text-2xl font-extrabold">🌿 Espace gérant</h1>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/logo.png" alt="Arboris Paysage" className="mx-auto h-14 w-auto object-contain" />
+      <h1 className="mb-6 mt-2 text-center text-2xl font-extrabold">Espace gérant</h1>
       <form onSubmit={submit} className="card space-y-4">
         <div>
           <label className="label" htmlFor="email">Email</label>

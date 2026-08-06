@@ -84,14 +84,12 @@ export default async function LandingPage() {
       ) : (
         <>
           <section className="grid grid-cols-3 gap-2 py-4">
-            {["🌳", "🪴", "🏡"].map((emoji, i) => (
+            {[0, 1, 2].map((i) => (
               <div
                 key={i}
-                className="flex aspect-square items-center justify-center rounded-2xl bg-gradient-to-br from-leaf-100 to-leaf-200 text-5xl"
+                className="aspect-square w-full rounded-2xl bg-gradient-to-br from-leaf-100 to-leaf-200"
                 aria-hidden
-              >
-                {emoji}
-              </div>
+              />
             ))}
           </section>
           <p className="pb-4 text-center text-xs text-leaf-800/50">

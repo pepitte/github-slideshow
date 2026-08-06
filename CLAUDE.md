@@ -77,7 +77,9 @@ Docs : `app/ARCHITECTURE.md`.
   par email (même ceux réservés sans compte), modifier/annuler. **Adresse
   obligatoire à l'inscription** (Client.address/postalCode/city) → le tunnel
   pré-remplit nom, tel, email et adresse pour un client connecté (bandeau vert,
-  modifiable si autre adresse). Réservation sans compte inchangée.
+  modifiable si autre adresse). Réservation sans compte inchangée. Fiche
+  « Mes coordonnées » modifiable dans `/compte` (`PATCH /api/client/me`) :
+  alerte orange tant que l'adresse manque (comptes créés avant la nouveauté).
 - **Espace professionnel** (`/pro`, inscription libre) : statut de dispo (🔵 devis
   / 🟢 chantier / 🟠 sous confirmation / 🔴 indispo — code couleur unifié avec les
   RDV : bleu = devis, vert = chantier), dates, nb de jours, rayon.

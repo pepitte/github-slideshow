@@ -166,7 +166,7 @@ export default function AdminSettingsPage() {
       <div className="space-y-6">
         {/* Google Agenda */}
         <section className="card space-y-3">
-          <h2 className="font-bold">📅 Google Agenda</h2>
+          <h2 className="font-bold">Google Agenda</h2>
           {s.googleConnected ? (
             <p className="text-sm text-leaf-800">
               ✓ Connecté {s.googleEmail && <span className="font-semibold">({s.googleEmail})</span>} —
@@ -192,7 +192,7 @@ export default function AdminSettingsPage() {
 
         {/* Entreprise */}
         <section className="card space-y-3">
-          <h2 className="font-bold">🏢 Entreprise & branding</h2>
+          <h2 className="font-bold">Entreprise & branding</h2>
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <label className="label">Nom de l&apos;entreprise</label>
@@ -247,7 +247,7 @@ export default function AdminSettingsPage() {
         {/* Photos de réalisations */}
         <section className="card space-y-3">
           <h2 className="font-bold">
-            📸 Photos de réalisations
+            Photos de réalisations
             {gallerySaved && <span className="ml-2 text-sm font-semibold text-leaf-700">✓ Enregistré</span>}
           </h2>
           <p className="text-sm text-leaf-800/70">
@@ -259,7 +259,7 @@ export default function AdminSettingsPage() {
 
         {/* Zone d'intervention */}
         <section className="card space-y-3">
-          <h2 className="font-bold">🗺️ Zone d&apos;intervention</h2>
+          <h2 className="font-bold">Zone d&apos;intervention</h2>
           <div className="flex gap-2">
             {[
               { id: "postal", label: "Codes postaux" },
@@ -328,7 +328,7 @@ export default function AdminSettingsPage() {
 
         {/* Horaires */}
         <section className="card space-y-2">
-          <h2 className="font-bold">🕗 Horaires d&apos;ouverture</h2>
+          <h2 className="font-bold">Horaires d&apos;ouverture</h2>
           {[1, 2, 3, 4, 5, 6, 7].map((d) => {
             const day = hours[String(d)] ?? { enabled: false, start: "08:00", end: "18:00" };
             return (
@@ -364,7 +364,7 @@ export default function AdminSettingsPage() {
         {/* Rendez-vous chantier */}
         <section className="card space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="font-bold">🚜 Rendez-vous chantier</h2>
+            <h2 className="font-bold">Rendez-vous chantier</h2>
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
@@ -426,7 +426,7 @@ export default function AdminSettingsPage() {
 
         {/* Congés */}
         <section className="card space-y-3">
-          <h2 className="font-bold">🏖️ Congés / indisponibilités</h2>
+          <h2 className="font-bold">Congés / indisponibilités</h2>
           {daysOff.map((d, i) => (
             <div key={i} className="flex items-center gap-2 text-sm">
               <input
@@ -460,7 +460,7 @@ export default function AdminSettingsPage() {
 
         {/* Messages */}
         <section className="card space-y-3">
-          <h2 className="font-bold">💬 Textes SMS & email</h2>
+          <h2 className="font-bold">Textes SMS & email</h2>
           <p className="text-xs text-leaf-800/60">
             Variables : {"{{prenom}} {{nom}} {{date}} {{heure}} {{adresse}} {{entreprise}} {{telephone}} {{lien_annulation}}"}
           </p>

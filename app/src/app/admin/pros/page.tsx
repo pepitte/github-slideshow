@@ -100,12 +100,12 @@ export default function AdminProsPage() {
               </div>
               <div className="mt-3 grid gap-1 border-t border-leaf-100 pt-3 text-sm">
                 <p>
-                  📞 <a className="text-leaf-700 underline" href={`tel:${p.phone}`}>{p.phone || "—"}</a>
+                  <a className="text-leaf-700 underline" href={`tel:${p.phone}`}>{p.phone || "—"}</a>
                   {" · "}
-                  ✉️ <a className="text-leaf-700 underline" href={`mailto:${p.email}`}>{p.email}</a>
+                  <a className="text-leaf-700 underline" href={`mailto:${p.email}`}>{p.email}</a>
                 </p>
-                <p>🗓️ {p.availableDays} journée(s) annoncée(s)</p>
-                <p>📅 {fmtDates(p.datesJson)}</p>
+                <p>{p.availableDays} journée(s) annoncée(s)</p>
+                <p>{fmtDates(p.datesJson)}</p>
                 <p>⏰ Créneaux devis : {fmtSlots(p.devisSlotsJson)}</p>
                 {p.note && <p className="rounded-xl bg-sand-50 p-3 text-leaf-800/80">{p.note}</p>}
               </div>
