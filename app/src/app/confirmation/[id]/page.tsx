@@ -32,7 +32,7 @@ export default async function ConfirmationPage({ params }: { params: { id: strin
       <div className="card mt-6 w-full space-y-2 text-left">
         {group.length > 1 ? (
           <>
-            <p className="font-semibold">📅 Chantier de {group.length} jours, dès 8h00 :</p>
+            <p className="font-semibold">Chantier de {group.length} jours, dès 8h00 :</p>
             <ul className="ml-6 list-disc">
               {group.map((g, i) => (
                 <li key={i} className="capitalize">{formatDateFr(g.startAt)}</li>
@@ -41,12 +41,12 @@ export default async function ConfirmationPage({ params }: { params: { id: strin
           </>
         ) : (
           <p>
-            <span className="font-semibold">📅 {formatDateFr(booking.startAt)}</span> à{" "}
+            <span className="font-semibold">{formatDateFr(booking.startAt)}</span> à{" "}
             <span className="font-semibold">{formatTimeFr(booking.startAt)}</span>
           </p>
         )}
-        <p>📍 {booking.address}, {booking.postalCode} {booking.city}</p>
-        <p>🏢 {settings.companyName} — {settings.companyPhone}</p>
+        <p>{booking.address}, {booking.postalCode} {booking.city}</p>
+        <p>{settings.companyName} — {settings.companyPhone}</p>
       </div>
 
       <p className="mt-4 text-sm text-leaf-800/70">

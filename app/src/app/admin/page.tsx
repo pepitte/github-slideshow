@@ -151,12 +151,12 @@ export default function AdminDashboard() {
               {isOpen && (
                 <div className="mt-4 space-y-3 border-t border-leaf-100 pt-4 text-sm">
                   <p>
-                    📞 <a className="text-leaf-700 underline" href={`tel:${b.phone}`}>{b.phone}</a>
+                    <a className="text-leaf-700 underline" href={`tel:${b.phone}`}>{b.phone}</a>
                     {" · "}
-                    ✉️ <a className="text-leaf-700 underline" href={`mailto:${b.email}`}>{b.email}</a>
+                    <a className="text-leaf-700 underline" href={`mailto:${b.email}`}>{b.email}</a>
                   </p>
-                  <p>📍 {b.address}, {b.postalCode} {b.city}</p>
-                  {b.kind === "chantier" && <p>🕗 {chantierLabel(b)}</p>}
+                  <p>{b.address}, {b.postalCode} {b.city}</p>
+                  {b.kind === "chantier" && <p>{chantierLabel(b)}</p>}
                   {b.description && <p className="rounded-xl bg-sand-50 p-3">{b.description}</p>}
                   {b.photos.length > 0 && (
                     <div className="flex gap-2">

@@ -26,12 +26,7 @@ export default async function SiteHeader() {
           className="h-14 w-auto max-w-[230px] object-contain"
         />
       ) : (
-        <div className="flex items-center gap-2">
-          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-leaf-600 text-lg">
-            🌿
-          </span>
-          <span className="font-bold text-leaf-900">{settings.companyName}</span>
-        </div>
+        <span className="text-lg font-bold text-leaf-900">{settings.companyName}</span>
       )}
     </header>
   );

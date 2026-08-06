@@ -44,7 +44,8 @@ export default function ProLoginPage() {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-4">
-      <p className="mb-1 text-center text-3xl" aria-hidden>🌿</p>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/logo.png" alt="Arboris Paysage" className="mx-auto h-14 w-auto object-contain" />
       <h1 className="mb-1 mt-2 text-center text-2xl font-extrabold">Espace professionnel</h1>
       <p className="mb-5 text-center text-sm text-leaf-800/70">
         Déclarez vos disponibilités pour les devis et les chantiers.

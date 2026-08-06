@@ -37,7 +37,7 @@ export const DEFAULT_SMS_1H =
   "Votre RDV devis {{entreprise}} a lieu dans 1 h, à {{heure}}. À tout à l'heure ! Contact : {{telephone}}";
 export const DEFAULT_EMAIL_SUBJECT = "Confirmation de votre RDV devis — {{entreprise}}";
 export const DEFAULT_EMAIL_BODY =
-  "Bonjour {{prenom}},\n\nVotre rendez-vous pour l'établissement d'un devis est confirmé :\n\n📅 {{date}} à {{heure}}\n📍 {{adresse}}\n\nVous trouverez en pièce jointe une invitation à ajouter à votre calendrier.\n\nPour annuler ou reporter : {{lien_annulation}}\n\nÀ bientôt,\n{{entreprise}} — {{telephone}}";
+  "Bonjour {{prenom}},\n\nVotre rendez-vous pour l'établissement d'un devis est confirmé :\n\n{{date}} à {{heure}}\n{{adresse}}\n\nVous trouverez en pièce jointe une invitation à ajouter à votre calendrier.\n\nPour annuler ou reporter : {{lien_annulation}}\n\nÀ bientôt,\n{{entreprise}} — {{telephone}}";
 
 export async function getSettings(): Promise<Settings> {
   return prisma.settings.upsert({
