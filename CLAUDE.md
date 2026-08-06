@@ -90,6 +90,14 @@ Docs : `app/ARCHITECTURE.md`.
   téléphones** (prop `showContacts`). Vue gérant : onglet « Professionnels »
   dans `/admin` (adresse complète affichée).
 - **Connexion unifiée** : `/connexion` (choix particulier / professionnel).
+- **Gestion terrain** (`/admin/terrain`, onglet « Terrain ») : pointage des pros
+  (modèle WorkEntry, 1 ligne/pro/jour, heure de Paris). Côté pro : carte
+  « Ma journée » avec boutons Pointer l'arrivée/le départ (corrigeables,
+  `POST /api/pro/pointage`) + badge « Validée par le gérant ». Côté gérant :
+  onglets « Fiches & journées » (filtres Aujourd'hui / Cette semaine / Date
+  personnalisée, recherche, tableau arrivée/départ/total/statut
+  Incomplet-Complet-Validée, bouton Valider) et « Suivi » (totaux par pro).
+  Inspiré de la capture « Gestion poseurs » fournie par le client.
 - **Planning patron** (`/admin/planning`, réservé gérant) : agenda type
   calendrier avec vues **Mois / Semaine / Jour** (défaut : semaine), navigation
   ← Aujourd'hui →. Semaine/Jour = grille horaire 7h-20h avec RDV en blocs
