@@ -37,7 +37,12 @@ async function getBusy(
     }),
     getBusyPeriods(settings, rangeStart, rangeEnd),
   ]);
-  return [...bookings.map((b) => ({ start: b.startAt, end: b.endAt })), ...googleBusy];
+  return [
+    ...bookings
+      .filter((b): b is { startAt: Date; endAt: Date } => Boolean(b.startAt && b.endAt))
+      .map((b) => ({ start: b.startAt, end: b.endAt })),
+    ...googleBusy,
+  ];
 }
 
 /**

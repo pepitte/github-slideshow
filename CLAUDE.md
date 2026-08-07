@@ -102,6 +102,10 @@ Docs : `app/ARCHITECTURE.md`.
   journée (PhotoUpload, auto-enregistrées via `PUT /api/pro/pointage`,
   WorkEntry.photosBefore/AfterJson) ; le gérant les voit dans le tableau
   (colonne Photos, ligne dépliable de miniatures).
+- **Espace gérant** : barre latérale gauche (layout `/admin`, composant AdminNav)
+  avec logo, icônes SVG (Tableau de bord, Agenda, Gestion terrain,
+  Professionnels, Paramètres) et Déconnexion en bas ; rail d'icônes seul sur
+  mobile ; absente de `/admin/login`. Inspirée de la maquette du client.
 - **Planning patron** (`/admin/planning`, réservé gérant) : agenda type
   calendrier avec vues **Mois / Semaine / Jour** (défaut : semaine), navigation
   ← Aujourd'hui →. Semaine/Jour = grille horaire 7h-20h avec RDV en blocs

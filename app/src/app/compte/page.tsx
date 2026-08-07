@@ -9,7 +9,7 @@ type Booking = {
   id: string;
   kind: string;
   projectType: string;
-  startAt: string;
+  startAt: string | null;
   address: string;
   postalCode: string;
   city: string;
@@ -40,7 +40,8 @@ const STATUS_LABELS: Record<string, string> = {
   annule: "Annulé",
 };
 
-function fmt(iso: string): string {
+function fmt(iso: string | null): string {
+  if (!iso) return "Date à définir";
   return new Date(iso).toLocaleString("fr-FR", {
     timeZone: "Europe/Paris",
     weekday: "long",
@@ -128,8 +129,13 @@ export default function ClientAccount() {
   }
 
   const now = Date.now();
-  const upcoming = bookings.filter((b) => new Date(b.startAt).getTime() >= now && b.status !== "annule");
-  const past = bookings.filter((b) => new Date(b.startAt).getTime() < now || b.status === "annule");
+  // Un devis « sans date » (créé par le gérant) reste dans « À venir ».
+  const upcoming = bookings.filter(
+    (b) => (!b.startAt || new Date(b.startAt).getTime() >= now) && b.status !== "annule"
+  );
+  const past = bookings.filter(
+    (b) => b.startAt && (new Date(b.startAt).getTime() < now || b.status === "annule")
+  );
 
   function card(b: Booking) {
     return (
@@ -144,7 +150,7 @@ export default function ClientAccount() {
           {PROJECT_LABELS[b.projectType] ?? b.projectType} · {b.city || b.postalCode}
         </p>
         <p className="mt-1 text-sm text-leaf-800/60">{STATUS_LABELS[b.status] ?? b.status}</p>
-        {b.status !== "annule" && new Date(b.startAt).getTime() >= now && (
+        {b.status !== "annule" && b.startAt && new Date(b.startAt).getTime() >= now && (
           <Link href={`/annuler/${b.cancelToken}`} className="mt-2 inline-block text-sm font-semibold text-leaf-700 underline">
             Modifier ou annuler
           </Link>

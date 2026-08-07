@@ -61,7 +61,8 @@ export function utcToParis(date: Date): { date: string; time: string; weekday: n
 }
 
 /** Format long lisible : "mercredi 15 juillet 2026" */
-export function formatDateFr(date: Date): string {
+export function formatDateFr(date: Date | null): string {
+  if (!date) return "date à définir";
   return new Intl.DateTimeFormat("fr-FR", {
     timeZone: TIMEZONE,
     weekday: "long",
@@ -72,7 +73,8 @@ export function formatDateFr(date: Date): string {
 }
 
 /** "09h30" */
-export function formatTimeFr(date: Date): string {
+export function formatTimeFr(date: Date | null): string {
+  if (!date) return "";
   const { time } = utcToParis(date);
   return time.replace(":", "h");
 }

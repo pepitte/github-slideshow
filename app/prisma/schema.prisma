@@ -56,23 +56,27 @@ model Settings {
 model Booking {
   id             String    @id @default(cuid())
   createdAt      DateTime  @default(now())
-  firstName      String
-  lastName       String
-  phone          String
-  email          String
-  address        String
-  postalCode     String
+  // Coordonnées optionnelles : un devis créé à la main peut être incomplet.
+  firstName      String    @default("")
+  lastName       String    @default("")
+  phone          String    @default("")
+  email          String    @default("")
+  address        String    @default("")
+  postalCode     String    @default("")
   city           String    @default("")
   lat            Float?
   lng            Float?
   kind           String    @default("devis") // devis | chantier
+  // web = réservé sur le site ; manual = créé à la main par le gérant
+  source         String    @default("web")
   // Chantier multi-jours : les RDV d'un même groupe partagent le groupId
   // (= id du RDV principal, qui porte le lien d'annulation et les photos).
   groupId        String    @default("")
-  projectType    String // entretien | taille_haie | debroussaillage | contrat_annuel | autre
+  projectType    String    @default("autre") // entretien | taille_haie | debroussaillage | contrat_annuel | autre
   description    String    @default("")
-  startAt        DateTime
-  endAt          DateTime
+  // Nulles pour un devis manuel pas encore planifié (« sans date »)
+  startAt        DateTime?
+  endAt          DateTime?
   status         String    @default("a_faire") // a_faire | devis_envoye | gagne | perdu | annule
   cancelToken    String    @unique @default(cuid())
   googleEventId  String    @default("")
