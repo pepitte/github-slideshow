@@ -2,7 +2,6 @@
 
 // Paramètres gérant : entreprise, Google Agenda, horaires, zones, messages.
 import { useEffect, useRef, useState } from "react";
-import AdminNav from "../AdminNav";
 import PhotoUpload from "@/components/PhotoUpload";
 
 /** Redimensionne le logo côté client (max 600 px de large, PNG). */
@@ -111,7 +110,6 @@ export default function AdminSettingsPage() {
   if (!s) {
     return (
       <main className="mx-auto max-w-3xl px-4 py-6">
-        <AdminNav />
         <p className="py-8 text-center text-leaf-800/60">Chargement…</p>
       </main>
     );
@@ -160,7 +158,6 @@ export default function AdminSettingsPage() {
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-6">
-      <AdminNav />
       <h1 className="mb-5 text-xl font-bold">Paramètres</h1>
 
       <div className="space-y-6">

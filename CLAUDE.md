@@ -98,6 +98,10 @@ Docs : `app/ARCHITECTURE.md`.
   personnalisée, recherche, tableau arrivée/départ/total/statut
   Incomplet-Complet-Validée, bouton Valider) et « Suivi » (totaux par pro).
   Inspiré de la capture « Gestion poseurs » fournie par le client.
+  **Photos avant/après chantier** : le pro en joint jusqu'à 4 de chaque à sa
+  journée (PhotoUpload, auto-enregistrées via `PUT /api/pro/pointage`,
+  WorkEntry.photosBefore/AfterJson) ; le gérant les voit dans le tableau
+  (colonne Photos, ligne dépliable de miniatures).
 - **Planning patron** (`/admin/planning`, réservé gérant) : agenda type
   calendrier avec vues **Mois / Semaine / Jour** (défaut : semaine), navigation
   ← Aujourd'hui →. Semaine/Jour = grille horaire 7h-20h avec RDV en blocs

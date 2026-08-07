@@ -3,7 +3,6 @@
 // Gestion terrain : consultation et validation des temps et journées des pros
 // (pointages arrivée/départ faits depuis l'espace professionnel).
 import { useEffect, useMemo, useState } from "react";
-import AdminNav from "../AdminNav";
 
 type Entry = {
   id: string;
@@ -171,7 +170,6 @@ export default function TerrainPage() {
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-6">
-      <AdminNav />
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold">Gestion terrain</h1>

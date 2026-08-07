@@ -2,7 +2,6 @@
 
 // Tableau de bord gérant : RDV à venir, détails prospects, photos, statuts.
 import { useEffect, useState } from "react";
-import AdminNav from "./AdminNav";
 
 type Photo = { id: string; dataUrl: string };
 type Booking = {
@@ -100,7 +99,6 @@ export default function AdminDashboard() {
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-6">
-      <AdminNav />
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-xl font-bold">Rendez-vous ({visible.length})</h1>
         <label className="flex items-center gap-2 text-sm text-leaf-800/70">
