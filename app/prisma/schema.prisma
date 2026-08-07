@@ -168,6 +168,27 @@ model Client {
   resetExpiry  DateTime?
 }
 
+// Documents commerciaux du gérant : devis chiffrés et factures, avec lignes
+// de prestations (itemsJson) et numérotation automatique (D-2026-001…).
+model Document {
+  id            String   @id @default(cuid())
+  createdAt     DateTime @default(now())
+  type          String // devis | facture
+  number        String   @unique
+  date          String // AAAA-MM-JJ (date d'émission)
+  clientName    String   @default("")
+  clientAddress String   @default("")
+  clientEmail   String   @default("")
+  clientPhone   String   @default("")
+  // [{"label":"Taille de haie","qty":1,"unit":"forfait","unitPrice":250}]
+  itemsJson     String   @default("[]")
+  vatRate       Float    @default(20) // 0 = TVA non applicable (art. 293 B CGI)
+  notes         String   @default("")
+  // devis : brouillon | envoye | accepte | refuse — facture : a_payer | payee
+  status        String   @default("brouillon")
+  updatedAt     DateTime @updatedAt
+}
+
 // Prospects hors zone d'intervention (formulaire de contact)
 model Lead {
   id         String   @id @default(cuid())
