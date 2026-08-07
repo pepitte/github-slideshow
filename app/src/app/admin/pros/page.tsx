@@ -2,7 +2,6 @@
 
 // Vue gérant : tous les professionnels et leurs disponibilités déclarées.
 import { useEffect, useState } from "react";
-import AdminNav from "../AdminNav";
 import { PRO_STATUS_META } from "@/lib/proStatus";
 
 type Pro = {
@@ -66,7 +65,6 @@ export default function AdminProsPage() {
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-6">
-      <AdminNav />
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-xl font-bold">Professionnels ({pros.length})</h1>
         <span className="text-sm text-leaf-800/60">{available.length} disponible(s)</span>
@@ -110,7 +108,7 @@ export default function AdminProsPage() {
                 </p>
                 <p>{p.availableDays} journée(s) annoncée(s)</p>
                 <p>{fmtDates(p.datesJson)}</p>
-                <p>⏰ Créneaux devis : {fmtSlots(p.devisSlotsJson)}</p>
+                <p>Créneaux devis : {fmtSlots(p.devisSlotsJson)}</p>
                 {p.note && <p className="rounded-xl bg-sand-50 p-3 text-leaf-800/80">{p.note}</p>}
               </div>
             </div>

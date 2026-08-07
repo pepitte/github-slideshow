@@ -1,7 +1,60 @@
 "use client";
 
+// Barre latérale de l'espace gérant : logo, menu vertical avec icônes,
+// déconnexion en bas (inspirée de la maquette fournie par le client).
+// Sur mobile, seules les icônes restent visibles (rail étroit).
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+
+const ICONS: Record<string, JSX.Element> = {
+  dashboard: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 shrink-0">
+      <rect x="3" y="3" width="7" height="7" rx="1.5" />
+      <rect x="14" y="3" width="7" height="7" rx="1.5" />
+      <rect x="3" y="14" width="7" height="7" rx="1.5" />
+      <rect x="14" y="14" width="7" height="7" rx="1.5" />
+    </svg>
+  ),
+  agenda: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 shrink-0">
+      <rect x="3" y="4" width="18" height="18" rx="2" />
+      <path d="M16 2v4M8 2v4M3 10h18" />
+    </svg>
+  ),
+  terrain: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 shrink-0">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 3" />
+    </svg>
+  ),
+  pros: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 shrink-0">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2" />
+      <circle cx="10" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  ),
+  params: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 shrink-0">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
+    </svg>
+  ),
+  logout: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 shrink-0">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <path d="M16 17l5-5-5-5M21 12H9" />
+    </svg>
+  ),
+};
+
+const LINKS = [
+  { href: "/admin", label: "Tableau de bord", icon: "dashboard" },
+  { href: "/admin/planning", label: "Agenda", icon: "agenda" },
+  { href: "/admin/terrain", label: "Gestion terrain", icon: "terrain" },
+  { href: "/admin/pros", label: "Professionnels", icon: "pros" },
+  { href: "/admin/parametres", label: "Paramètres", icon: "params" },
+];
 
 export default function AdminNav() {
   const pathname = usePathname();
@@ -12,23 +65,43 @@ export default function AdminNav() {
     router.push("/admin/login");
   }
 
-  const linkClass = (href: string) =>
-    `rounded-xl px-4 py-2 text-sm font-medium ${
-      pathname === href ? "bg-leaf-600 text-white" : "text-leaf-800 hover:bg-leaf-100"
-    }`;
-
   return (
-    <nav className="mb-6 flex items-center gap-2 border-b border-leaf-100 pb-4">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/logo.png" alt="Arboris Paysage" className="mr-2 h-8 w-auto object-contain" />
-      <Link href="/admin" className={linkClass("/admin")}>Tableau de bord</Link>
-      <Link href="/admin/planning" className={linkClass("/admin/planning")}>Planning</Link>
-      <Link href="/admin/terrain" className={linkClass("/admin/terrain")}>Terrain</Link>
-      <Link href="/admin/pros" className={linkClass("/admin/pros")}>Professionnels</Link>
-      <Link href="/admin/parametres" className={linkClass("/admin/parametres")}>Paramètres</Link>
-      <button onClick={logout} className="ml-auto text-sm text-leaf-800/60 hover:text-leaf-800">
-        Déconnexion
-      </button>
-    </nav>
+    <aside className="sticky top-0 flex h-screen w-14 shrink-0 flex-col border-r border-leaf-100 bg-white sm:w-56">
+      <div className="flex items-center justify-center px-2 py-4 sm:justify-start sm:px-4">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo.png" alt="Arboris Paysage" className="h-9 w-auto max-w-full object-contain" />
+      </div>
+
+      <nav className="flex flex-1 flex-col gap-1 px-2 py-2">
+        {LINKS.map(({ href, label, icon }) => {
+          const active = pathname === href;
+          return (
+            <Link
+              key={href}
+              href={href}
+              title={label}
+              className={`flex items-center justify-center gap-3 rounded-xl px-2 py-2.5 text-sm font-medium transition sm:justify-start sm:px-3 ${
+                active ? "bg-leaf-600 text-white" : "text-leaf-800 hover:bg-leaf-50"
+              }`}
+            >
+              {ICONS[icon]}
+              <span className="hidden sm:inline">{label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+
+      <div className="border-t border-leaf-100 px-2 py-3 sm:px-3">
+        <p className="hidden truncate px-1 pb-2 text-xs text-leaf-800/50 sm:block">Espace gérant</p>
+        <button
+          onClick={logout}
+          title="Déconnexion"
+          className="flex w-full items-center justify-center gap-3 rounded-xl px-2 py-2.5 text-sm font-medium text-leaf-800/70 transition hover:bg-leaf-50 hover:text-leaf-900 sm:justify-start sm:px-3"
+        >
+          {ICONS.logout}
+          <span className="hidden sm:inline">Déconnexion</span>
+        </button>
+      </div>
+    </aside>
   );
 }
