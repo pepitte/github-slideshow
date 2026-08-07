@@ -33,10 +33,13 @@ export default function AddressAutocomplete({
   value,
   onChange,
   label = "Adresse du chantier *",
+  optional = false,
 }: {
   value: AddressValue;
   onChange: (v: AddressValue) => void;
   label?: string;
+  /** true = aucun champ obligatoire (devis manuel du gérant) */
+  optional?: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [placesActive, setPlacesActive] = useState(false);
@@ -82,13 +85,13 @@ export default function AddressAutocomplete({
           autoComplete="street-address"
           value={value.address}
           onChange={(e) => onChange({ ...value, address: e.target.value })}
-          required
+          required={!optional}
         />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="label" htmlFor="postalCode">
-            Code postal *
+            {optional ? "Code postal" : "Code postal *"}
           </label>
           <input
             id="postalCode"
@@ -102,7 +105,7 @@ export default function AddressAutocomplete({
             onChange={(e) =>
               onChange({ ...value, postalCode: e.target.value.replace(/\D/g, "") })
             }
-            required
+            required={!optional}
           />
         </div>
         <div>

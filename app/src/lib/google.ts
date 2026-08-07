@@ -126,6 +126,7 @@ export async function getBusyPeriods(
 
 /** Crée l'événement du RDV dans Google Agenda. Renvoie l'ID de l'événement ("" si non connecté). */
 export async function createCalendarEvent(settings: Settings, booking: Booking): Promise<string> {
+  if (!booking.startAt || !booking.endAt) return ""; // devis manuel sans date
   const token = await getAccessToken(settings);
   if (!token) return "";
   try {
@@ -139,8 +140,8 @@ export async function createCalendarEvent(settings: Settings, booking: Booking):
           summary: `Devis — ${booking.firstName} ${booking.lastName} (${booking.projectType})`,
           description: `Tél: ${booking.phone}\nEmail: ${booking.email}\nProjet: ${booking.projectType}\n${booking.description}`,
           location: `${booking.address}, ${booking.postalCode} ${booking.city}`,
-          start: { dateTime: booking.startAt.toISOString(), timeZone: TIMEZONE },
-          end: { dateTime: booking.endAt.toISOString(), timeZone: TIMEZONE },
+          start: { dateTime: booking.startAt!.toISOString(), timeZone: TIMEZONE },
+          end: { dateTime: booking.endAt!.toISOString(), timeZone: TIMEZONE },
         }),
       }
     );

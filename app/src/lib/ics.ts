@@ -10,6 +10,7 @@ function escapeIcs(s: string): string {
 }
 
 export function buildIcs(booking: Booking, settings: Settings): string {
+  if (!booking.startAt || !booking.endAt) return ""; // pas d'invitation sans date
   const location = `${booking.address}, ${booking.postalCode} ${booking.city}`;
   return [
     "BEGIN:VCALENDAR",
@@ -20,8 +21,8 @@ export function buildIcs(booking: Booking, settings: Settings): string {
     "BEGIN:VEVENT",
     `UID:${booking.id}@rdv-devis`,
     `DTSTAMP:${icsDate(new Date())}`,
-    `DTSTART:${icsDate(booking.startAt)}`,
-    `DTEND:${icsDate(booking.endAt)}`,
+    `DTSTART:${icsDate(booking.startAt!)}`,
+    `DTEND:${icsDate(booking.endAt!)}`,
     `SUMMARY:${escapeIcs(`RDV devis — ${settings.companyName}`)}`,
     `LOCATION:${escapeIcs(location)}`,
     `DESCRIPTION:${escapeIcs(

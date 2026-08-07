@@ -2,6 +2,8 @@
 
 // Tableau de bord gérant : RDV à venir, détails prospects, photos, statuts.
 import { useEffect, useState } from "react";
+import ManualBookingModal from "./ManualBookingModal";
+import PhotoUpload from "@/components/PhotoUpload";
 
 type Photo = { id: string; dataUrl: string };
 type Booking = {
@@ -14,16 +16,18 @@ type Booking = {
   postalCode: string;
   city: string;
   kind: string;
+  source: string;
   projectType: string;
   description: string;
-  startAt: string;
-  endAt: string;
+  startAt: string | null;
+  endAt: string | null;
   status: string;
   photos: Photo[];
 };
 
 /** Libellé de la formule chantier, déduit des heures (fin à 12h = demi-journée). */
 function chantierLabel(b: Booking): string {
+  if (!b.endAt) return "";
   const endH = new Date(b.endAt).toLocaleTimeString("fr-FR", {
     timeZone: "Europe/Paris",
     hour: "2-digit",
@@ -49,7 +53,8 @@ const PROJECT_LABELS: Record<string, string> = {
   autre: "Autre",
 };
 
-function fmt(dateIso: string): string {
+function fmt(dateIso: string | null): string {
+  if (!dateIso) return "Sans date";
   return new Date(dateIso).toLocaleString("fr-FR", {
     timeZone: "Europe/Paris",
     weekday: "short",
@@ -66,8 +71,13 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [showPast, setShowPast] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  // Fiche : édition des notes et photos
+  const [notesDraft, setNotesDraft] = useState("");
+  const [notesSaved, setNotesSaved] = useState(false);
+  const [notesError, setNotesError] = useState("");
 
-  useEffect(() => {
+  function load() {
     fetch("/api/admin/bookings")
       .then((r) => {
         if (r.status === 401) {
@@ -81,7 +91,48 @@ export default function AdminDashboard() {
         setLeads(data.leads ?? []);
       })
       .finally(() => setLoading(false));
-  }, []);
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(load, []);
+
+  function openCard(b: Booking) {
+    const isOpen = expanded === b.id;
+    setExpanded(isOpen ? null : b.id);
+    if (!isOpen) {
+      setNotesDraft(b.description);
+      setNotesSaved(false);
+      setNotesError("");
+    }
+  }
+
+  async function saveNotes(id: string) {
+    setNotesError("");
+    const res = await fetch(`/api/admin/bookings/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ description: notesDraft }),
+    });
+    if (res.ok) {
+      setBookings((bs) => bs.map((b) => (b.id === id ? { ...b, description: notesDraft } : b)));
+      setNotesSaved(true);
+      setTimeout(() => setNotesSaved(false), 2500);
+    } else {
+      setNotesError("Échec de l'enregistrement, réessayez.");
+    }
+  }
+
+  async function savePhotos(id: string, dataUrls: string[]) {
+    // Mise à jour optimiste puis envoi (les data URLs existants sont réutilisables)
+    const res = await fetch(`/api/admin/bookings/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ photos: dataUrls }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setBookings((bs) => bs.map((b) => (b.id === id ? { ...b, photos: data.booking.photos } : b)));
+    }
+  }
 
   async function updateStatus(id: string, status: string) {
     setBookings((bs) => bs.map((b) => (b.id === id ? { ...b, status } : b)));
@@ -93,18 +144,29 @@ export default function AdminDashboard() {
   }
 
   const now = Date.now();
+  // Les devis « sans date » restent toujours visibles, en tête de liste.
   const visible = bookings.filter(
-    (b) => showPast || new Date(b.startAt).getTime() >= now - 24 * 3600_000
+    (b) => !b.startAt || showPast || new Date(b.startAt).getTime() >= now - 24 * 3600_000
   );
+  visible.sort((a, b) => {
+    if (!a.startAt) return -1;
+    if (!b.startAt) return 1;
+    return new Date(a.startAt).getTime() - new Date(b.startAt).getTime();
+  });
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-6">
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-bold">Rendez-vous ({visible.length})</h1>
-        <label className="flex items-center gap-2 text-sm text-leaf-800/70">
-          <input type="checkbox" checked={showPast} onChange={(e) => setShowPast(e.target.checked)} />
-          Afficher les RDV passés
-        </label>
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="flex items-center gap-2 text-sm text-leaf-800/70">
+            <input type="checkbox" checked={showPast} onChange={(e) => setShowPast(e.target.checked)} />
+            Afficher les RDV passés
+          </label>
+          <button className="btn-primary !w-auto !px-4 !py-2.5 text-sm" onClick={() => setShowModal(true)}>
+            Ajouter un devis manuellement
+          </button>
+        </div>
       </div>
 
       {loading && <p className="py-8 text-center text-leaf-800/60">Chargement…</p>}
@@ -120,15 +182,22 @@ export default function AdminDashboard() {
             <div key={b.id} className="card">
               <button
                 className="flex w-full items-center justify-between gap-3 text-left"
-                onClick={() => setExpanded(isOpen ? null : b.id)}
+                onClick={() => openCard(b)}
               >
                 <div>
                   <p className="font-semibold">
-                    {fmt(b.startAt)} — {b.firstName} {b.lastName}
+                    {fmt(b.startAt)}
+                    {(b.firstName || b.lastName) ? ` — ${b.firstName} ${b.lastName}`.trimEnd() : " — (sans nom)"}
                   </p>
                   <p className="text-sm text-leaf-800/70">
-                    {PROJECT_LABELS[b.projectType] ?? b.projectType} · {b.city || b.postalCode}
+                    {PROJECT_LABELS[b.projectType] ?? b.projectType}
+                    {(b.city || b.postalCode) ? ` · ${b.city || b.postalCode}` : ""}
                   </p>
+                  {b.source === "manual" && (
+                    <span className="mt-1 inline-block rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-600">
+                      Créé manuellement
+                    </span>
+                  )}
                 </div>
                 <div className="flex flex-col items-end gap-1">
                   <span
@@ -148,24 +217,44 @@ export default function AdminDashboard() {
 
               {isOpen && (
                 <div className="mt-4 space-y-3 border-t border-leaf-100 pt-4 text-sm">
-                  <p>
-                    <a className="text-leaf-700 underline" href={`tel:${b.phone}`}>{b.phone}</a>
-                    {" · "}
-                    <a className="text-leaf-700 underline" href={`mailto:${b.email}`}>{b.email}</a>
-                  </p>
-                  <p>{b.address}, {b.postalCode} {b.city}</p>
-                  {b.kind === "chantier" && <p>{chantierLabel(b)}</p>}
-                  {b.description && <p className="rounded-xl bg-sand-50 p-3">{b.description}</p>}
-                  {b.photos.length > 0 && (
-                    <div className="flex gap-2">
-                      {b.photos.map((p) => (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <a key={p.id} href={p.dataUrl} target="_blank" rel="noreferrer">
-                          <img src={p.dataUrl} alt="Photo du chantier" loading="lazy" className="h-24 w-24 rounded-xl object-cover" />
-                        </a>
-                      ))}
-                    </div>
+                  {(b.phone || b.email) && (
+                    <p>
+                      {b.phone && <a className="text-leaf-700 underline" href={`tel:${b.phone}`}>{b.phone}</a>}
+                      {b.phone && b.email && " · "}
+                      {b.email && <a className="text-leaf-700 underline" href={`mailto:${b.email}`}>{b.email}</a>}
+                    </p>
                   )}
+                  {(b.address || b.postalCode || b.city) && (
+                    <p>{[b.address, `${b.postalCode} ${b.city}`.trim()].filter(Boolean).join(", ")}</p>
+                  )}
+                  {b.kind === "chantier" && b.endAt && <p>{chantierLabel(b)}</p>}
+
+                  <div>
+                    <span className="label">Notes</span>
+                    <textarea
+                      className="input min-h-[70px]"
+                      placeholder="Notes internes sur ce devis…"
+                      value={notesDraft}
+                      onChange={(e) => setNotesDraft(e.target.value)}
+                    />
+                    <div className="mt-1.5 flex items-center gap-2">
+                      <button
+                        className="btn-secondary !px-3 !py-1.5 text-xs"
+                        onClick={() => saveNotes(b.id)}
+                      >
+                        Enregistrer les notes
+                      </button>
+                      {notesSaved && <span className="text-xs font-semibold text-leaf-700">✓ Enregistré</span>}
+                      {notesError && <span className="text-xs font-semibold text-red-600">{notesError}</span>}
+                    </div>
+                  </div>
+
+                  <PhotoUpload
+                    photos={b.photos.map((p) => p.dataUrl)}
+                    onChange={(urls) => savePhotos(b.id, urls)}
+                    label="Photos (10 max)"
+                    maxPhotos={10}
+                  />
                   <div>
                     <span className="label">Statut</span>
                     <div className="flex flex-wrap gap-2">
@@ -188,6 +277,16 @@ export default function AdminDashboard() {
           );
         })}
       </div>
+
+      {showModal && (
+        <ManualBookingModal
+          onClose={() => setShowModal(false)}
+          onCreated={() => {
+            setShowModal(false);
+            load();
+          }}
+        />
+      )}
 
       {leads.length > 0 && (
         <section className="mt-10">
