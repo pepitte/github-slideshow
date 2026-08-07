@@ -40,6 +40,12 @@ const ICONS: Record<string, JSX.Element> = {
       <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
     </svg>
   ),
+  facturation: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 shrink-0">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
+    </svg>
+  ),
   logout: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 shrink-0">
       <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
@@ -52,6 +58,7 @@ const LINKS = [
   { href: "/admin", label: "Tableau de bord", icon: "dashboard" },
   { href: "/admin/planning", label: "Agenda", icon: "agenda" },
   { href: "/admin/terrain", label: "Gestion terrain", icon: "terrain" },
+  { href: "/admin/facturation", label: "Devis & Factures", icon: "facturation" },
   { href: "/admin/pros", label: "Professionnels", icon: "pros" },
   { href: "/admin/parametres", label: "Paramètres", icon: "params" },
 ];
@@ -66,7 +73,7 @@ export default function AdminNav() {
   }
 
   return (
-    <aside className="sticky top-0 flex h-screen w-14 shrink-0 flex-col border-r border-leaf-100 bg-white sm:w-56">
+    <aside className="sticky top-0 flex h-screen w-14 shrink-0 flex-col border-r border-leaf-100 bg-white print:hidden sm:w-56">
       <div className="flex items-center justify-center px-2 py-4 sm:justify-start sm:px-4">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logo.png" alt="Arboris Paysage" className="h-9 w-auto max-w-full object-contain" />
@@ -74,7 +81,7 @@ export default function AdminNav() {
 
       <nav className="flex flex-1 flex-col gap-1 px-2 py-2">
         {LINKS.map(({ href, label, icon }) => {
-          const active = pathname === href;
+          const active = pathname === href || (href !== "/admin" && pathname.startsWith(href + "/"));
           return (
             <Link
               key={href}
