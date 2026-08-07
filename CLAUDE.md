@@ -90,6 +90,17 @@ Docs : `app/ARCHITECTURE.md`.
   téléphones** (prop `showContacts`). Vue gérant : onglet « Professionnels »
   dans `/admin` (adresse complète affichée).
 - **Connexion unifiée** : `/connexion` (choix particulier / professionnel).
+- **Devis manuel** (bouton « Ajouter un devis manuellement », tableau de bord
+  gérant) : modale tous champs facultatifs (garde-fou « au moins une info »,
+  validations souples email/tel FR), date de RDV facultative → Booking avec
+  `source: "manual"` et `startAt/endAt` **nullables** (« Sans date », épinglé en
+  tête de liste, badge « Créé manuellement »). Champs coordonnées de Booking
+  désormais avec défaut `""`, projectType défaut `autre`. Fiche : notes
+  modifiables (bouton explicite) + photos ajout/retrait (10 max,
+  `PATCH /api/admin/bookings/:id` accepte status/description/photos). Les RDV
+  sans date sont ignorés par dispos/agenda/rappels/Google ; côté client :
+  « Date à définir ». `POST /api/admin/bookings` (admin). AddressAutocomplete
+  a une prop `optional`.
 - **Gestion terrain** (`/admin/terrain`, onglet « Terrain ») : pointage des pros
   (modèle WorkEntry, 1 ligne/pro/jour, heure de Paris). Côté pro : carte
   « Ma journée » avec boutons Pointer l'arrivée/le départ (corrigeables,
