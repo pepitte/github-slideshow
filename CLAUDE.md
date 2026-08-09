@@ -16,15 +16,28 @@ Branche de travail : `claude/landscaping-booking-platform-ejx6ap`.
   créneaux temps réel type Calendly) → confirmation. Objectif < 60 secondes.
 - **Notifications** : SMS Twilio automatique à la réservation, email Resend
   avec .ics, rappels SMS 24 h et 1 h avant (cron `/api/cron/reminders`).
-  Lien d'annulation qui libère le créneau.
+  Lien d'annulation qui libère le créneau. **Alerte au gérant** à chaque
+  réservation (`notifyOwnerNewBooking`) : email détaillé + SMS optionnel,
+  destinataires `Settings.ownerEmail`/`ownerPhone` (repli companyEmail/Phone
+  puis `ADMIN_EMAIL`), cases à cocher dans les paramètres.
 - **Anti double-booking** : Google Calendar OAuth (freeBusy en direct) + RDV
   en BDD + revérification du créneau à la soumission. Buffer trajet paramétrable.
+- **Créneaux liés aux dispos des pros** (`Settings.proFilterMode` : off /
+  chantier (défaut) / tous) : `getProCoverage()` ne laisse passer que les jours
+  couverts par un pro « disponible chantier » et les jour+heure couverts par un
+  pro « disponible devis ». Filet de sécurité : si aucun pro n'a déclaré de
+  date, le filtre est ignoré.
 - **Zone d'intervention** : codes postaux (préfixe accepté) ou rayon km ;
   hors zone → message + formulaire de contact (Lead).
 - **Espace admin** (`/admin`) : dashboard RDV avec statuts (à faire / devis
   envoyé / gagné / perdu / annulé), paramètres (horaires, congés, zone, durées,
   textes SMS/email, logo, photos de réalisations), connexion Google en 1 clic.
 - **Meta Pixel** : PageView / Lead / Schedule.
+- **Application mobile (PWA)** : `public/manifest.webmanifest` + icônes
+  192/512/maskable/apple générées depuis l'emblème du logo, service worker
+  `public/sw.js` **volontairement minimal** (cache l'habillage uniquement ;
+  intercepter la navigation cassait le préchargement Next.js), composant
+  `PwaInstall` (bandeau refermable, bouton Installer, rappel du geste iPhone).
 
 ## Stack
 
@@ -118,6 +131,10 @@ Docs : `app/ARCHITECTURE.md`.
   `time` HH:mm ; le gérant corrige arrivée/départ directement dans le tableau
   (`PATCH /api/admin/terrain` avec arrival/departure, "" pour effacer) et peut
   créer une journée vide (`POST /api/admin/terrain {proId, date}`).
+  **Export Excel** : bouton « Exporter pour Excel » →
+  `GET /api/admin/terrain/export?from=&to=`, CSV (BOM UTF-8, séparateur `;`,
+  heures en h:mm et en décimal à virgule, ligne TOTAL) ouvrable tel quel dans
+  Excel FR — pour la paie et la facturation des sous-traitants.
 - **Devis & Factures** (`/admin/facturation`, entrée barre latérale) : modèle
   Document (type devis/facture, numéro unique auto D-2026-001 / F-2026-001,
   lignes itemsJson label/qty/unit/unitPrice, TVA 0/10/20 avec mention art. 293 B
@@ -126,8 +143,16 @@ Docs : `app/ARCHITECTURE.md`.
   l'en-tête (logo, coordonnées, SIRET), bouton Imprimer/PDF (window.print,
   formulaire et sidebar en print:hidden), « Transformer en facture », suppression.
   APIs `GET/POST /api/admin/documents`, `GET/PATCH/DELETE /api/admin/documents/:id`.
+- **Statistiques** (`/admin/stats`, entrée barre latérale, API
+  `GET /api/admin/stats`) : tuiles (RDV à venir, taux de devis gagnés, facturé
+  cette année, reste à encaisser), RDV par semaine sur 12 semaines (barres
+  empilées bleu = devis / vert = chantier + tableau des chiffres dépliable),
+  répartition par statut, CA facturé par mois sur 12 mois (encaissé / en
+  attente). Le taux de transformation ne compte que les dossiers décidés
+  (gagnés + perdus). Graphiques en CSS pur (aucune librairie), couleurs
+  #2563eb / #16a34a validées pour le daltonisme.
 - **Espace gérant** : barre latérale gauche (layout `/admin`, composant AdminNav)
-  avec logo, icônes SVG (Tableau de bord, Agenda, Gestion terrain,
+  avec logo, icônes SVG (Tableau de bord, Agenda, Gestion terrain, Statistiques,
   Devis & Factures, Professionnels, Paramètres) et Déconnexion en bas ; rail d'icônes seul sur
   mobile ; absente de `/admin/login`. Inspirée de la maquette du client.
   Tableau de bord : **recherche** (nom, tel, email, ville, CP, adresse,
@@ -186,5 +211,10 @@ client) : navigation intégrée comme le vrai site — « Se connecter » en hau
 
 - Déploiement Vercel (compte client à créer, Neon Postgres, variables d'env).
 - Clés API à fournir par le client : Google (OAuth + Places), Twilio, Resend,
-  Meta Pixel ID.
+  Meta Pixel ID. **Sans Resend, l'alerte de nouvelle réservation ne part pas
+  vraiment** (email simulé en console) — c'est la clé la plus utile à obtenir.
+- Nom de domaine personnalisé (l'icône PWA affichera alors le vrai domaine).
+- Validation serveur email/téléphone sur `/api/bookings` (le formulaire bloque
+  déjà les valeurs invalides, l'API publique non) — signalé au client, non
+  demandé à ce jour.
 - Éventuelle PR vers `main` (à la demande du client uniquement).
