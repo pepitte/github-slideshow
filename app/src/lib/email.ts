@@ -5,15 +5,24 @@ export function emailConfigured(): boolean {
   return Boolean(process.env.RESEND_API_KEY);
 }
 
-export async function sendEmail(options: {
+export type EmailOptions = {
   to: string;
   subject: string;
   text: string;
   icsContent?: string;
-}): Promise<boolean> {
+};
+
+export async function sendEmail(options: EmailOptions): Promise<boolean> {
+  return (await sendEmailChecked(options)).ok;
+}
+
+/** Comme `sendEmail`, mais renvoie le motif du refus (bouton de test de l'admin). */
+export async function sendEmailChecked(
+  options: EmailOptions
+): Promise<{ ok: boolean; simulated?: boolean; error?: string }> {
   if (!emailConfigured()) {
     console.log(`[Email simulé → ${options.to}] ${options.subject}\n${options.text}`);
-    return true;
+    return { ok: true, simulated: true };
   }
   try {
     const body: Record<string, unknown> = {
@@ -40,12 +49,17 @@ export async function sendEmail(options: {
       body: JSON.stringify(body),
     });
     if (!res.ok) {
-      console.error("Envoi email Resend échoué:", await res.text());
-      return false;
+      const detail = await res.text();
+      console.error("Envoi email Resend échoué:", detail);
+      let message = detail;
+      try {
+        message = JSON.parse(detail)?.message || detail;
+      } catch {}
+      return { ok: false, error: message };
     }
-    return true;
+    return { ok: true };
   } catch (e) {
     console.error("Envoi email erreur réseau:", e);
-    return false;
+    return { ok: false, error: "Le service d'envoi est injoignable." };
   }
 }

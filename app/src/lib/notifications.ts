@@ -6,6 +6,19 @@ import { buildIcs } from "./ics";
 import { renderTemplate } from "./templates";
 import { formatDateFr, formatTimeFr } from "./dates";
 
+// Adresse d'exemple livrée par défaut : ne jamais lui envoyer d'alerte.
+const EMAIL_EXEMPLE = "contact@example.com";
+
+/** Adresse du gérant : réglage dédié, sinon email de l'entreprise, sinon compte admin. */
+export function ownerEmailOf(settings: Settings): string {
+  const company = settings.companyEmail === EMAIL_EXEMPLE ? "" : settings.companyEmail;
+  return settings.ownerEmail || company || process.env.ADMIN_EMAIL || "";
+}
+
+export function ownerPhoneOf(settings: Settings): string {
+  return settings.ownerPhone || settings.companyPhone || "";
+}
+
 const PROJECT_LABELS: Record<string, string> = {
   entretien: "Entretien de jardin général",
   taille_haie: "Taille de haie",
@@ -42,7 +55,7 @@ export async function notifyOwnerNewBooking(
   const tasks: Promise<unknown>[] = [];
 
   if (settings.notifyOwnerEmail) {
-    const to = settings.ownerEmail || settings.companyEmail || process.env.ADMIN_EMAIL || "";
+    const to = ownerEmailOf(settings);
     if (to) {
       tasks.push(
         sendEmail({
@@ -69,7 +82,7 @@ export async function notifyOwnerNewBooking(
     }
   }
   if (settings.notifyOwnerSms) {
-    const to = settings.ownerPhone || settings.companyPhone;
+    const to = ownerPhoneOf(settings);
     if (to) {
       tasks.push(
         sendSms(
@@ -125,7 +138,7 @@ export async function notifyOwnerNewLead(
   const tasks: Promise<unknown>[] = [];
 
   if (settings.notifyOwnerEmail) {
-    const to = settings.ownerEmail || settings.companyEmail || process.env.ADMIN_EMAIL || "";
+    const to = ownerEmailOf(settings);
     if (to) {
       tasks.push(
         sendEmail({
@@ -152,7 +165,7 @@ export async function notifyOwnerNewLead(
     }
   }
   if (settings.notifyOwnerSms) {
-    const to = settings.ownerPhone || settings.companyPhone;
+    const to = ownerPhoneOf(settings);
     if (to) {
       tasks.push(
         sendSms(to, `Nouveau prospect ${lead.name}${lead.phone ? ` — ${lead.phone}` : ""} (${origine}).`)

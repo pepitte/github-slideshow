@@ -61,6 +61,9 @@ export default function AdminSettingsPage() {
   const [daysOff, setDaysOff] = useState<DayOff[]>([]);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [testMsg, setTestMsg] = useState("");
+  const [testOk, setTestOk] = useState(false);
+  const [testing, setTesting] = useState(false);
   const [gallery, setGallery] = useState<string[]>([]);
   const [gallerySaved, setGallerySaved] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -164,6 +167,18 @@ export default function AdminSettingsPage() {
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     }
+  }
+
+  // Envoi d'essai : enregistre d'abord, puis dit en clair si l'email part.
+  async function testerEmail() {
+    setTesting(true);
+    setTestMsg("");
+    await save();
+    const res = await fetch("/api/admin/test-email", { method: "POST" });
+    const data = await res.json();
+    setTesting(false);
+    setTestOk(Boolean(data.ok));
+    setTestMsg(data.message ?? data.error ?? "Test impossible.");
   }
 
   return (
@@ -471,6 +486,20 @@ export default function AdminSettingsPage() {
             Les SMS nécessitent la clé Twilio, les emails la clé Resend. Sans clé, les messages
             s&apos;affichent seulement dans les journaux techniques.
           </p>
+          <div className="border-t border-leaf-100 pt-3">
+            <button className="btn-secondary" onClick={testerEmail} disabled={testing}>
+              {testing ? "Envoi en cours…" : "Envoyer un email de test"}
+            </button>
+            {testMsg && (
+              <p
+                className={`mt-2 rounded-xl px-3 py-2 text-sm ${
+                  testOk ? "bg-leaf-50 text-leaf-800" : "bg-red-50 text-red-700"
+                }`}
+              >
+                {testMsg}
+              </p>
+            )}
+          </div>
         </section>
 
         {/* Disponibilité des professionnels */}
