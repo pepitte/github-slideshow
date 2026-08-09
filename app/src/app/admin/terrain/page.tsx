@@ -237,12 +237,21 @@ export default function TerrainPage() {
         )}
       </div>
 
-      <input
-        className="input mb-4"
-        placeholder="Rechercher un professionnel…"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-      />
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <input
+          className="input flex-1 !w-auto min-w-[12rem]"
+          placeholder="Rechercher un professionnel…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        {/* Heures pointées de la période → fichier ouvrable dans Excel (paie, sous-traitants) */}
+        <a
+          className="btn-secondary whitespace-nowrap !w-auto"
+          href={`/api/admin/terrain/export?from=${range.from}&to=${range.to}`}
+        >
+          Exporter pour Excel
+        </a>
+      </div>
 
       {loading ? (
         <p className="py-10 text-center text-leaf-800/60">Chargement…</p>

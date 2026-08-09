@@ -9,7 +9,7 @@ import {
   type ChantierDuration,
 } from "@/lib/availability";
 import { createCalendarEvent } from "@/lib/google";
-import { sendConfirmation } from "@/lib/notifications";
+import { sendConfirmation, notifyOwnerNewBooking } from "@/lib/notifications";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -130,8 +130,9 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // SMS + email de confirmation (dates groupées si plusieurs jours)
+    // SMS + email de confirmation (dates groupées si plusieurs jours) + alerte gérant
     await sendConfirmation(primary, settings, days);
+    await notifyOwnerNewBooking(primary, settings, days);
     return NextResponse.json({ id: primary.id }, { status: 201 });
   }
 
@@ -157,6 +158,8 @@ export async function POST(req: NextRequest) {
 
   // 4. SMS de confirmation immédiat + email avec .ics — sans action du gérant.
   await sendConfirmation(booking, settings);
+  // 5. Alerte au gérant : plus besoin d'ouvrir le tableau de bord.
+  await notifyOwnerNewBooking(booking, settings);
 
   return NextResponse.json({ id: booking.id }, { status: 201 });
 }
