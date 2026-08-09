@@ -18,8 +18,14 @@ Branche de travail : `claude/landscaping-booking-platform-ejx6ap`.
   avec .ics, rappels SMS 24 h et 1 h avant (cron `/api/cron/reminders`).
   Lien d'annulation qui libère le créneau. **Alerte au gérant** à chaque
   réservation (`notifyOwnerNewBooking`) : email détaillé + SMS optionnel,
-  destinataires `Settings.ownerEmail`/`ownerPhone` (repli companyEmail/Phone
-  puis `ADMIN_EMAIL`), cases à cocher dans les paramètres.
+  destinataires via `ownerEmailOf()`/`ownerPhoneOf()` : `Settings.ownerEmail`,
+  sinon companyEmail (**l'adresse d'exemple `contact@example.com` est ignorée**,
+  sinon elle masquait `ADMIN_EMAIL` et les alertes partaient dans le vide),
+  sinon `ADMIN_EMAIL`. Cases à cocher dans les paramètres.
+  **Bouton « Envoyer un email de test »** (`POST /api/admin/test-email`) :
+  enregistre puis tente un vrai envoi et affiche le diagnostic en français
+  (destinataire manquant / clé absente avec la liste des variables `resend` vues
+  par le serveur et leur longueur / motif de refus Resend traduit).
 - **Anti double-booking** : Google Calendar OAuth (freeBusy en direct) + RDV
   en BDD + revérification du créneau à la soumission. Buffer trajet paramétrable.
 - **Créneaux liés aux dispos des pros** (`Settings.proFilterMode` : off /
@@ -229,9 +235,13 @@ client) : navigation intégrée comme le vrai site — « Se connecter » en hau
 ## Prochaines étapes envisagées
 
 - Déploiement Vercel (compte client à créer, Neon Postgres, variables d'env).
-- Clés API à fournir par le client : Google (OAuth + Places), Twilio, Resend,
-  Meta Pixel ID. **Sans Resend, l'alerte de nouvelle réservation ne part pas
-  vraiment** (email simulé en console) — c'est la clé la plus utile à obtenir.
+- **Resend : configuré en production le 9 août** (compte au nom de
+  arborispaysagecontact@gmail.com, `RESEND_API_KEY` dans Vercel). Les alertes au
+  gérant arrivent réellement. Piège rencontré : la variable avait été enregistrée
+  **vide** — le bouton de test le dit maintenant explicitement (« 0 caractères »).
+  Rappel : sans domaine vérifié, Resend n'écrit qu'à l'adresse propriétaire du
+  compte, donc **les emails de confirmation aux clients ne partent pas encore**.
+- Clés API restant à fournir : Google (OAuth + Places), Twilio, Meta Pixel ID.
 - Nom de domaine personnalisé (l'icône PWA affichera alors le vrai domaine).
 - Validation serveur email/téléphone sur `/api/bookings` (le formulaire bloque
   déjà les valeurs invalides, l'API publique non) — signalé au client, non
