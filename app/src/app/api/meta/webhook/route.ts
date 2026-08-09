@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
           parsed.message = "Détails à importer (page Meta non reliée).";
         }
         if (await saveLead(parsed)) {
-          const lead = await prisma.lead.findUnique({ where: { externalId: leadgenId } });
+          const lead = await prisma.lead.findFirst({ where: { externalId: leadgenId } });
           if (lead) await notifyOwnerNewLead(lead, settings);
         }
       } catch (e) {
