@@ -24,11 +24,21 @@ export async function POST() {
     });
   }
   if (!emailConfigured()) {
+    // Que voit réellement le serveur ? On expose de quoi identifier une faute de
+    // frappe ou une valeur vide, sans jamais divulguer la clé elle-même.
+    const noms = Object.keys(process.env).filter((k) => /resend/i.test(k));
+    const detail = noms.length
+      ? noms
+          .map((n) => `« ${n} » (${(process.env[n] ?? "").trim().length} caractères)`)
+          .join(", ")
+      : "aucune";
     return NextResponse.json({
       ok: false,
       to,
       message:
-        "La clé Resend n'est pas encore active sur le site. Vérifiez la variable RESEND_API_KEY dans Vercel (projet arboris-paysage, environnement Production), puis relancez un déploiement.",
+        "La clé Resend n'est pas encore active sur le site. Variables contenant « resend » vues par le serveur : " +
+        detail +
+        ". Il faut une variable nommée exactement RESEND_API_KEY, non vide, en environnement Production, puis un nouveau déploiement.",
     });
   }
 
