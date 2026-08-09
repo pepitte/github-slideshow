@@ -46,6 +46,53 @@ async function getBusy(
 }
 
 /**
+ * Couverture par les professionnels : quels jours (chantier) et quels
+ * couples jour+heure (devis) sont couverts par au moins un pro disponible.
+ * `active` est faux si le filtre est désactivé — ou si personne n'a encore
+ * déclaré la moindre disponibilité (sinon le site ne proposerait plus rien).
+ */
+type ProCoverage = {
+  active: boolean;
+  chantierDays: Set<string>;
+  devisSlots: Set<string>; // "AAAA-MM-JJ HH:mm"
+};
+
+async function getProCoverage(settings: Settings, kind: BookingKind): Promise<ProCoverage> {
+  const off: ProCoverage = { active: false, chantierDays: new Set(), devisSlots: new Set() };
+  const mode = settings.proFilterMode;
+  if (mode !== "tous" && !(mode === "chantier" && kind === "chantier")) return off;
+
+  const pros = await prisma.pro.findMany({
+    select: { status: true, datesJson: true, devisSlotsJson: true },
+  });
+  const parse = (json: string): string[] => {
+    try {
+      const arr = JSON.parse(json);
+      return Array.isArray(arr) ? arr.map(String) : [];
+    } catch {
+      return [];
+    }
+  };
+  const chantierDays = new Set<string>();
+  const devisSlots = new Set<string>();
+  let anyDeclared = false;
+
+  for (const pro of pros) {
+    const dates = parse(pro.datesJson);
+    if (dates.length) anyDeclared = true;
+    if (pro.status === "disponible_chantier") {
+      for (const d of dates) chantierDays.add(d);
+    }
+    if (pro.status === "disponible_devis") {
+      const slots = parse(pro.devisSlotsJson);
+      for (const d of dates) for (const h of slots) devisSlots.add(`${d} ${h}`);
+    }
+  }
+  if (!anyDeclared) return off; // filet de sécurité
+  return { active: true, chantierDays, devisSlots };
+}
+
+/**
  * Créneaux DEVIS : visites de fin de journée, toutes les 30 min.
  * Chaque créneau réserve [début - buffer, fin + buffer] pour le trajet.
  * `excludeBookingId` : RDV à ignorer (cas du report — son propre créneau
@@ -66,7 +113,10 @@ export async function getAvailability(
   const startDay = todayParis();
   const rangeStart = new Date();
   const rangeEnd = parisTimeToUtc(addDaysStr(startDay, settings.maxDaysAhead), "23:59");
-  const busy = await getBusy(settings, rangeStart, rangeEnd, excludeBookingId);
+  const [busy, coverage] = await Promise.all([
+    getBusy(settings, rangeStart, rangeEnd, excludeBookingId),
+    getProCoverage(settings, "devis"),
+  ]);
 
   const minStart = new Date(Date.now() + settings.minNoticeHours * 3600_000);
   const result: DaySlots[] = [];
@@ -89,6 +139,10 @@ export async function getAvailability(
     ) {
       const slotStart = new Date(t);
       if (slotStart < minStart) continue;
+      // Un professionnel doit être disponible sur ce créneau (si le filtre est actif).
+      if (coverage.active && !coverage.devisSlots.has(`${dateStr} ${utcToParis(slotStart).time}`)) {
+        continue;
+      }
       // Le créneau bloqué inclut le buffer avant/après (temps de trajet).
       const blocked: Interval = {
         start: new Date(t - buffer * 60_000),
@@ -129,7 +183,10 @@ export async function getChantierAvailability(
   const startDay = todayParis();
   const rangeStart = new Date();
   const rangeEnd = parisTimeToUtc(addDaysStr(startDay, settings.maxDaysAhead), "23:59");
-  const busy = await getBusy(settings, rangeStart, rangeEnd, excludeBookingId);
+  const [busy, coverage] = await Promise.all([
+    getBusy(settings, rangeStart, rangeEnd, excludeBookingId),
+    getProCoverage(settings, "chantier"),
+  ]);
 
   const minStart = new Date(Date.now() + settings.minNoticeHours * 3600_000);
   const result: ChantierDay[] = [];
@@ -140,6 +197,8 @@ export async function getChantierAvailability(
     const dayConfig = hours[String(weekday)];
     if (!dayConfig?.enabled) continue;
     if (daysOff.some((d) => dateStr >= d.from && dateStr <= d.to)) continue;
+    // Au moins un professionnel disponible pour le chantier ce jour-là.
+    if (coverage.active && !coverage.chantierDays.has(dateStr)) continue;
 
     const start = parisTimeToUtc(dateStr, dayConfig.start); // 08:00
     if (start < minStart) continue;

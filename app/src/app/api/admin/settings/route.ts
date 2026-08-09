@@ -71,6 +71,13 @@ export async function PUT(req: NextRequest) {
     chantierDurationMin: num("chantierDurationMin"),
     chantierHoursJson: json("chantierHours"),
     daysOffJson: json("daysOff"),
+    notifyOwnerEmail: typeof body.notifyOwnerEmail === "boolean" ? body.notifyOwnerEmail : undefined,
+    notifyOwnerSms: typeof body.notifyOwnerSms === "boolean" ? body.notifyOwnerSms : undefined,
+    ownerEmail: str("ownerEmail"),
+    ownerPhone: str("ownerPhone"),
+    proFilterMode: ["off", "chantier", "tous"].includes(str("proFilterMode") ?? "")
+      ? str("proFilterMode")
+      : undefined,
     smsConfirmation: str("smsConfirmation"),
     smsReminder24h: str("smsReminder24h"),
     smsReminder1h: str("smsReminder1h"),

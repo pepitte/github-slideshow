@@ -1,0 +1,22 @@
+{
+  "name": "Arboris Paysage — RDV devis",
+  "short_name": "Arboris",
+  "description": "Réservez votre rendez-vous de devis paysagiste en moins de 60 secondes.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#faf7f0",
+  "theme_color": "#347030",
+  "lang": "fr",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Réserver un devis", "url": "/?kind=devis" },
+    { "name": "Mon compte", "url": "/compte" },
+    { "name": "Espace professionnel", "url": "/pro" }
+  ]
+}

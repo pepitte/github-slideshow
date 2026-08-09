@@ -36,6 +36,11 @@ type SettingsView = {
   chantierDurationMin: number;
   chantierHoursJson: string;
   daysOffJson: string;
+  notifyOwnerEmail: boolean;
+  notifyOwnerSms: boolean;
+  ownerEmail: string;
+  ownerPhone: string;
+  proFilterMode: string;
   smsConfirmation: string;
   smsReminder24h: string;
   smsReminder1h: string;
@@ -142,6 +147,11 @@ export default function AdminSettingsPage() {
         chantierDurationMin: s.chantierDurationMin,
         chantierHours,
         daysOff,
+        notifyOwnerEmail: s.notifyOwnerEmail,
+        notifyOwnerSms: s.notifyOwnerSms,
+        ownerEmail: s.ownerEmail,
+        ownerPhone: s.ownerPhone,
+        proFilterMode: s.proFilterMode,
         smsConfirmation: s.smsConfirmation,
         smsReminder24h: s.smsReminder24h,
         smsReminder1h: s.smsReminder1h,
@@ -419,6 +429,76 @@ export default function AdminSettingsPage() {
               </div>
             </>
           )}
+        </section>
+
+        {/* Alertes gérant */}
+        <section className="card space-y-3">
+          <h2 className="font-bold">Être prévenu des nouvelles réservations</h2>
+          <p className="text-sm text-leaf-800/70">
+            Dès qu&apos;un client réserve, recevez le détail du rendez-vous sans ouvrir le tableau de bord.
+          </p>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={s.notifyOwnerEmail}
+              onChange={(e) => set({ notifyOwnerEmail: e.target.checked })}
+            />
+            Me prévenir par email
+          </label>
+          <input
+            className="input"
+            type="email"
+            placeholder="Email qui reçoit les alertes (par défaut : email de l'entreprise)"
+            value={s.ownerEmail}
+            onChange={(e) => set({ ownerEmail: e.target.value })}
+          />
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={s.notifyOwnerSms}
+              onChange={(e) => set({ notifyOwnerSms: e.target.checked })}
+            />
+            Me prévenir par SMS
+          </label>
+          <input
+            className="input"
+            type="tel"
+            placeholder="Numéro qui reçoit les SMS (par défaut : téléphone de l'entreprise)"
+            value={s.ownerPhone}
+            onChange={(e) => set({ ownerPhone: e.target.value })}
+          />
+          <p className="text-xs text-leaf-800/60">
+            Les SMS nécessitent la clé Twilio, les emails la clé Resend. Sans clé, les messages
+            s&apos;affichent seulement dans les journaux techniques.
+          </p>
+        </section>
+
+        {/* Disponibilité des professionnels */}
+        <section className="card space-y-3">
+          <h2 className="font-bold">Créneaux et disponibilité des professionnels</h2>
+          <p className="text-sm text-leaf-800/70">
+            Ne proposer aux clients que les créneaux couverts par au moins un professionnel qui
+            s&apos;est déclaré disponible.
+          </p>
+          {[
+            { v: "off", label: "Non — proposer tous les créneaux libres" },
+            { v: "chantier", label: "Chantiers seulement (recommandé)" },
+            { v: "tous", label: "Chantiers et visites devis" },
+          ].map((o) => (
+            <label key={o.v} className="flex items-center gap-2 text-sm">
+              <input
+                type="radio"
+                name="proFilterMode"
+                checked={s.proFilterMode === o.v}
+                onChange={() => set({ proFilterMode: o.v })}
+              />
+              {o.label}
+            </label>
+          ))}
+          <p className="text-xs text-leaf-800/60">
+            Sécurité : tant qu&apos;aucun professionnel n&apos;a rempli son planning, le filtre est
+            ignoré — votre site continue de proposer des créneaux.
+          </p>
         </section>
 
         {/* Congés */}

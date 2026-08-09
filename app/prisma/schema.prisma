@@ -38,6 +38,17 @@ model Settings {
   chantierHoursJson   String  @default("")
   // Congés / indisponibilités: [{"from":"2026-08-01","to":"2026-08-15","label":"Congés"}]
   daysOffJson       String   @default("[]")
+  // Alerte au gérant à chaque nouvelle réservation (email et/ou SMS).
+  // Destinataires vides = companyEmail / companyPhone.
+  notifyOwnerEmail  Boolean  @default(true)
+  notifyOwnerSms    Boolean  @default(false)
+  ownerEmail        String   @default("")
+  ownerPhone        String   @default("")
+  // Ne proposer que les créneaux couverts par un pro disponible :
+  // "off" = jamais, "chantier" = chantiers seulement, "tous" = devis + chantiers.
+  // Sécurité : si aucun pro n'a déclaré la moindre disponibilité, le filtre est
+  // ignoré (sinon le site ne proposerait plus rien).
+  proFilterMode     String   @default("chantier")
   // Modèles de messages ({{prenom}}, {{date}}, {{heure}}, {{adresse}}, {{entreprise}}, {{telephone}}, {{lien_annulation}})
   smsConfirmation   String   @default("")
   smsReminder24h    String   @default("")

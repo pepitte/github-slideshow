@@ -4,6 +4,83 @@ import { sendSms } from "./sms";
 import { sendEmail } from "./email";
 import { buildIcs } from "./ics";
 import { renderTemplate } from "./templates";
+import { formatDateFr, formatTimeFr } from "./dates";
+
+const PROJECT_LABELS: Record<string, string> = {
+  entretien: "Entretien de jardin général",
+  taille_haie: "Taille de haie",
+  debroussaillage: "Débroussaillage",
+  contrat_annuel: "Contrat d'entretien à l'année",
+  autre: "Autre projet",
+};
+
+/** Quand a lieu le RDV, en clair (chantier multi-jours : « du … au … »). */
+function whenLabel(booking: Booking, groupDates?: Date[]): string {
+  if (groupDates && groupDates.length > 1) {
+    return `du ${formatDateFr(groupDates[0])} au ${formatDateFr(groupDates[groupDates.length - 1])}`;
+  }
+  const heure = formatTimeFr(booking.startAt);
+  return `${formatDateFr(booking.startAt)}${heure ? ` à ${heure}` : ""}`;
+}
+
+/**
+ * Alerte le gérant dès qu'un client réserve : email (et SMS si activé), pour
+ * ne plus avoir à ouvrir le tableau de bord. Destinataires : ceux des réglages,
+ * sinon les coordonnées de l'entreprise, sinon l'email de connexion admin.
+ */
+export async function notifyOwnerNewBooking(
+  booking: Booking,
+  settings: Settings,
+  groupDates?: Date[]
+): Promise<void> {
+  const quand = whenLabel(booking, groupDates);
+  const type = booking.kind === "chantier" ? "chantier" : "devis";
+  const client = `${booking.firstName} ${booking.lastName}`.trim() || "Client sans nom";
+  const lieu = [booking.address, `${booking.postalCode} ${booking.city}`.trim()]
+    .filter(Boolean)
+    .join(", ");
+  const tasks: Promise<unknown>[] = [];
+
+  if (settings.notifyOwnerEmail) {
+    const to = settings.ownerEmail || settings.companyEmail || process.env.ADMIN_EMAIL || "";
+    if (to) {
+      tasks.push(
+        sendEmail({
+          to,
+          subject: `Nouveau RDV ${type} — ${client} (${quand})`,
+          text: [
+            `Nouvelle réservation sur votre site :`,
+            ``,
+            `Type       : ${type === "chantier" ? "Chantier" : "Visite devis"}`,
+            `Quand      : ${quand}`,
+            `Client     : ${client}`,
+            `Téléphone  : ${booking.phone || "—"}`,
+            `Email      : ${booking.email || "—"}`,
+            `Adresse    : ${lieu || "—"}`,
+            `Projet     : ${PROJECT_LABELS[booking.projectType] ?? booking.projectType}`,
+            booking.description ? `Message    : ${booking.description}` : "",
+            ``,
+            `Retrouvez ce rendez-vous dans votre tableau de bord.`,
+          ]
+            .filter(Boolean)
+            .join("\n"),
+        })
+      );
+    }
+  }
+  if (settings.notifyOwnerSms) {
+    const to = settings.ownerPhone || settings.companyPhone;
+    if (to) {
+      tasks.push(
+        sendSms(
+          to,
+          `Nouveau RDV ${type} : ${client}, ${quand}${lieu ? `, ${lieu}` : ""}. Tel ${booking.phone || "—"}.`
+        )
+      );
+    }
+  }
+  await Promise.allSettled(tasks);
+}
 
 /** SMS + email de confirmation, envoyés immédiatement après la réservation.
  *  `groupDates` : chantier multi-jours ({{date}} devient « du … au … »). */
