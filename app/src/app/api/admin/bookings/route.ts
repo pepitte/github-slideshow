@@ -15,7 +15,12 @@ export async function GET() {
     orderBy: { startAt: "asc" },
     include: { photos: { select: { id: true, dataUrl: true } } },
   });
-  const leads = await prisma.lead.findMany({ orderBy: { createdAt: "desc" }, take: 50 });
+  // Les prospects venus des publicités ont leur propre section (Publicités Meta).
+  const leads = await prisma.lead.findMany({
+    where: { source: "site" },
+    orderBy: { createdAt: "desc" },
+    take: 50,
+  });
   return NextResponse.json({ bookings, leads });
 }
 

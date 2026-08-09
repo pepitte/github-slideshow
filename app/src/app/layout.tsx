@@ -34,11 +34,16 @@ export const viewport: Viewport = {
   themeColor: "#347030",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Le pixel est réglable depuis l'admin ; la BDD peut manquer au prérendu.
+  let pixelId = "";
+  try {
+    pixelId = (await getSettings()).metaPixelId;
+  } catch {}
   return (
     <html lang="fr">
       <body>
-        <MetaPixel />
+        <MetaPixel pixelId={pixelId} />
         {children}
         <PwaInstall />
       </body>

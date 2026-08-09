@@ -5,6 +5,7 @@
 // Sur iPhone, Safari n'expose pas d'invite : on rappelle le geste « Partager →
 // Sur l'écran d'accueil ».
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 
 type InstallPrompt = Event & {
   prompt: () => Promise<void>;
@@ -16,8 +17,11 @@ const DISMISS_KEY = "pwa-invite-masquee";
 export default function PwaInstall() {
   const [prompt, setPrompt] = useState<InstallPrompt | null>(null);
   const [iosHint, setIosHint] = useState(false);
+  // Espace gérant : pas d'invitation à installer (usage surtout sur ordinateur).
+  const masque = (usePathname() ?? "").startsWith("/admin");
 
   useEffect(() => {
+    if (masque) return;
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("/sw.js").catch(() => {});
     }
@@ -40,7 +44,7 @@ export default function PwaInstall() {
       setIosHint(true);
     }
     return () => window.removeEventListener("beforeinstallprompt", onPrompt);
-  }, []);
+  }, [masque]);
 
   function close() {
     localStorage.setItem(DISMISS_KEY, "1");
@@ -55,7 +59,7 @@ export default function PwaInstall() {
     close();
   }
 
-  if (!prompt && !iosHint) return null;
+  if (masque || (!prompt && !iosHint)) return null;
 
   return (
     <div className="fixed inset-x-3 bottom-3 z-40 mx-auto max-w-md rounded-2xl border border-leaf-200 bg-white p-3 shadow-lg">
