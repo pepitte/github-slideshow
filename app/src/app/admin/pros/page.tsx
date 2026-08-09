@@ -47,6 +47,15 @@ function fmtDates(json: string): string {
 export default function AdminProsPage() {
   const [pros, setPros] = useState<Pro[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  async function removePro(p: Pro) {
+    if (!window.confirm(`Retirer ${p.name} de la liste ? Ses pointages seront également supprimés.`)) return;
+    setError("");
+    const res = await fetch(`/api/admin/pros/${p.id}`, { method: "DELETE" });
+    if (res.ok) setPros((list) => list.filter((x) => x.id !== p.id));
+    else setError("Suppression impossible, réessayez.");
+  }
 
   useEffect(() => {
     fetch("/api/admin/pros")
@@ -70,6 +79,7 @@ export default function AdminProsPage() {
         <span className="text-sm text-leaf-800/60">{available.length} disponible(s)</span>
       </div>
 
+      {error && <p className="mb-3 text-sm font-semibold text-red-600">{error}</p>}
       {loading && <p className="py-8 text-center text-leaf-800/60">Chargement…</p>}
       {!loading && pros.length === 0 && (
         <p className="card py-8 text-center text-leaf-800/60">
@@ -93,12 +103,20 @@ export default function AdminProsPage() {
                     rayon {p.radiusKm} km
                   </p>
                 </div>
-                <span
-                  className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${meta.badge}`}
-                >
-                  <span className="h-2 w-2 rounded-full" style={{ background: meta.dot }} />
-                  {meta.label}
-                </span>
+                <div className="flex flex-col items-end gap-1.5">
+                  <span
+                    className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${meta.badge}`}
+                  >
+                    <span className="h-2 w-2 rounded-full" style={{ background: meta.dot }} />
+                    {meta.label}
+                  </span>
+                  <button
+                    onClick={() => removePro(p)}
+                    className="text-xs text-red-600 underline hover:text-red-700"
+                  >
+                    Retirer
+                  </button>
+                </div>
               </div>
               <div className="mt-3 grid gap-1 border-t border-leaf-100 pt-3 text-sm">
                 <p>

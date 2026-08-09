@@ -70,6 +70,8 @@ export default function AdminDashboard() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [showPast, setShowPast] = useState(false);
+  const [showCancelled, setShowCancelled] = useState(false);
+  const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   // Fiche : édition des notes et photos
@@ -144,10 +146,18 @@ export default function AdminDashboard() {
   }
 
   const now = Date.now();
+  const q = search.trim().toLowerCase();
   // Les devis « sans date » restent toujours visibles, en tête de liste.
-  const visible = bookings.filter(
-    (b) => !b.startAt || showPast || new Date(b.startAt).getTime() >= now - 24 * 3600_000
-  );
+  // Les RDV annulés sont masqués sauf demande explicite.
+  const visible = bookings.filter((b) => {
+    if (!showCancelled && b.status === "annule") return false;
+    if (b.startAt && !showPast && new Date(b.startAt).getTime() < now - 24 * 3600_000) return false;
+    if (!q) return true;
+    return [b.firstName, b.lastName, b.phone, b.email, b.city, b.postalCode, b.address, b.description]
+      .join(" ")
+      .toLowerCase()
+      .includes(q);
+  });
   visible.sort((a, b) => {
     if (!a.startAt) return -1;
     if (!b.startAt) return 1;
@@ -161,7 +171,11 @@ export default function AdminDashboard() {
         <div className="flex flex-wrap items-center gap-3">
           <label className="flex items-center gap-2 text-sm text-leaf-800/70">
             <input type="checkbox" checked={showPast} onChange={(e) => setShowPast(e.target.checked)} />
-            Afficher les RDV passés
+            RDV passés
+          </label>
+          <label className="flex items-center gap-2 text-sm text-leaf-800/70">
+            <input type="checkbox" checked={showCancelled} onChange={(e) => setShowCancelled(e.target.checked)} />
+            Annulés
           </label>
           <button className="btn-primary !w-auto !px-4 !py-2.5 text-sm" onClick={() => setShowModal(true)}>
             Ajouter un devis manuellement
@@ -169,9 +183,18 @@ export default function AdminDashboard() {
         </div>
       </div>
 
+      <input
+        className="input mb-4"
+        placeholder="Rechercher un client (nom, téléphone, ville…)"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+      />
+
       {loading && <p className="py-8 text-center text-leaf-800/60">Chargement…</p>}
       {!loading && visible.length === 0 && (
-        <p className="card py-8 text-center text-leaf-800/60">Aucun rendez-vous pour le moment.</p>
+        <p className="card py-8 text-center text-leaf-800/60">
+          {q ? "Aucun rendez-vous ne correspond à cette recherche." : "Aucun rendez-vous pour le moment."}
+        </p>
       )}
 
       <div className="space-y-3">

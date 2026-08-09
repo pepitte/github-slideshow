@@ -113,9 +113,17 @@ Docs : `app/ARCHITECTURE.md`.
   journée (PhotoUpload, auto-enregistrées via `PUT /api/pro/pointage`,
   WorkEntry.photosBefore/AfterJson) ; le gérant les voit dans le tableau
   (colonne Photos, ligne dépliable de miniatures).
+- **Devis & Factures** (`/admin/facturation`, entrée barre latérale) : modèle
+  Document (type devis/facture, numéro unique auto D-2026-001 / F-2026-001,
+  lignes itemsJson label/qty/unit/unitPrice, TVA 0/10/20 avec mention art. 293 B
+  à 0 %, statuts devis brouillon/envoyé/accepté/refusé et facture à payer/payée).
+  Liste à onglets + éditeur `/admin/facturation/[id]` avec aperçu imprimable à
+  l'en-tête (logo, coordonnées, SIRET), bouton Imprimer/PDF (window.print,
+  formulaire et sidebar en print:hidden), « Transformer en facture », suppression.
+  APIs `GET/POST /api/admin/documents`, `GET/PATCH/DELETE /api/admin/documents/:id`.
 - **Espace gérant** : barre latérale gauche (layout `/admin`, composant AdminNav)
   avec logo, icônes SVG (Tableau de bord, Agenda, Gestion terrain,
-  Professionnels, Paramètres) et Déconnexion en bas ; rail d'icônes seul sur
+  Devis & Factures, Professionnels, Paramètres) et Déconnexion en bas ; rail d'icônes seul sur
   mobile ; absente de `/admin/login`. Inspirée de la maquette du client.
 - **Planning patron** (`/admin/planning`, réservé gérant) : agenda type
   calendrier avec vues **Mois / Semaine / Jour** (défaut : semaine), navigation

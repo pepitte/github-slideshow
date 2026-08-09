@@ -99,6 +99,30 @@ export default function TerrainPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(load, [range.from, range.to]);
 
+  /** Corrige une heure (ou l'efface si vide) ; crée la journée si besoin. */
+  async function setTime(row: { pro: ProLite; date: string; entry: Entry | null }, champ: "arrival" | "departure", value: string) {
+    let id = row.entry?.id;
+    if (!id) {
+      const res = await fetch("/api/admin/terrain", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ proId: row.pro.id, date: row.date }),
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      id = data.entry.id as string;
+      setEntries((prev) => [...prev, data.entry]);
+    }
+    const res = await fetch("/api/admin/terrain", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, [champ]: value }),
+    });
+    if (res.ok) {
+      setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, [champ]: value } : e)));
+    }
+  }
+
   async function setValidated(id: string, validated: boolean) {
     const res = await fetch("/api/admin/terrain", {
       method: "PATCH",
@@ -227,6 +251,7 @@ export default function TerrainPage() {
           Aucun professionnel inscrit pour le moment.
         </p>
       ) : tab === "fiches" ? (
+        <>
         <div className="overflow-x-auto rounded-2xl border border-leaf-100 bg-white">
           <table className="w-full min-w-[640px] text-sm">
             <thead>
@@ -261,8 +286,22 @@ export default function TerrainPage() {
                     {pro.baseCity && <p className="text-xs text-leaf-800/50">{pro.baseCity}</p>}
                   </td>
                   {range.from !== range.to && <td className="px-4 py-3 capitalize">{dateLabel(date)}</td>}
-                  <td className="px-4 py-3">{fmtH(entry?.arrival ?? "")}</td>
-                  <td className="px-4 py-3">{fmtH(entry?.departure ?? "")}</td>
+                  <td className="px-4 py-3">
+                    <input
+                      type="time"
+                      className="w-24 rounded-lg border border-leaf-200 px-2 py-1 text-sm"
+                      value={entry?.arrival ?? ""}
+                      onChange={(e) => setTime({ pro, date, entry }, "arrival", e.target.value)}
+                    />
+                  </td>
+                  <td className="px-4 py-3">
+                    <input
+                      type="time"
+                      className="w-24 rounded-lg border border-leaf-200 px-2 py-1 text-sm"
+                      value={entry?.departure ?? ""}
+                      onChange={(e) => setTime({ pro, date, entry }, "departure", e.target.value)}
+                    />
+                  </td>
                   <td className="px-4 py-3 font-semibold">{entry ? totalLabel(entry) : "—"}</td>
                   <td className="px-4 py-3">
                     {nbPhotos > 0 && entry ? (
@@ -333,6 +372,10 @@ export default function TerrainPage() {
             </tbody>
           </table>
         </div>
+        <p className="mt-2 text-xs text-leaf-800/50">
+          Les heures sont modifiables : corrigez un oubli de pointage directement dans le tableau.
+        </p>
+        </>
       ) : (
         <div className="overflow-x-auto rounded-2xl border border-leaf-100 bg-white">
           <table className="w-full min-w-[480px] text-sm">
