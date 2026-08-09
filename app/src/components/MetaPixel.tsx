@@ -3,6 +3,7 @@
 // Pixel Meta soumis au consentement (RGPD/CNIL) : le script n'est chargé
 // qu'après acceptation via la bannière. Sans pixel configuré, rien ne s'affiche.
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 
 declare global {
   interface Window {
@@ -40,8 +41,14 @@ function loadPixel(pixelId: string) {
   fbq("track", "PageView");
 }
 
-export default function MetaPixel() {
-  const pixelId = process.env.NEXT_PUBLIC_META_PIXEL_ID;
+/** `pixelId` vient des réglages (section Publicités Meta) ; repli sur la variable
+ *  d'environnement pour les installations configurées avant cette section. */
+export default function MetaPixel({ pixelId: fromSettings }: { pixelId?: string }) {
+  // Espaces de travail (gérant, pros) : ni pixel ni bannière — on n'y suit pas
+  // de prospect, et la bannière masquerait le bas de l'écran.
+  const pathname = usePathname() ?? "";
+  const prive = pathname.startsWith("/admin") || pathname.startsWith("/pro");
+  const pixelId = prive ? undefined : fromSettings || process.env.NEXT_PUBLIC_META_PIXEL_ID;
   // null = pas encore répondu (bannière affichée), "yes"/"no" = choix enregistré
   const [consent, setConsent] = useState<string | null | "pending">("pending");
 

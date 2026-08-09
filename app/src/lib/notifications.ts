@@ -103,6 +103,65 @@ export async function sendConfirmation(
   ]);
 }
 
+/**
+ * Alerte le gérant dès qu'un prospect arrive d'une publicité Meta : c'est un
+ * contact à rappeler vite, il ne doit pas dormir dans le tableau de bord.
+ */
+export async function notifyOwnerNewLead(
+  lead: {
+    name: string;
+    phone: string;
+    email: string;
+    postalCode: string;
+    message: string;
+    formName: string;
+    adName: string;
+    campaign: string;
+    source: string;
+  },
+  settings: Settings
+): Promise<void> {
+  const origine = lead.source === "meta" ? "publicité Facebook/Instagram" : "formulaire du site";
+  const tasks: Promise<unknown>[] = [];
+
+  if (settings.notifyOwnerEmail) {
+    const to = settings.ownerEmail || settings.companyEmail || process.env.ADMIN_EMAIL || "";
+    if (to) {
+      tasks.push(
+        sendEmail({
+          to,
+          subject: `Nouveau prospect — ${lead.name}${lead.postalCode ? ` (${lead.postalCode})` : ""}`,
+          text: [
+            `Nouveau prospect à rappeler (${origine}) :`,
+            ``,
+            `Nom        : ${lead.name}`,
+            `Téléphone  : ${lead.phone || "—"}`,
+            `Email      : ${lead.email || "—"}`,
+            `Code postal: ${lead.postalCode || "—"}`,
+            lead.message ? `Message    : ${lead.message}` : "",
+            lead.campaign ? `Campagne   : ${lead.campaign}` : "",
+            lead.adName ? `Publicité  : ${lead.adName}` : "",
+            lead.formName ? `Formulaire : ${lead.formName}` : "",
+            ``,
+            `Retrouvez-le dans votre espace, section Publicités Meta.`,
+          ]
+            .filter(Boolean)
+            .join("\n"),
+        })
+      );
+    }
+  }
+  if (settings.notifyOwnerSms) {
+    const to = settings.ownerPhone || settings.companyPhone;
+    if (to) {
+      tasks.push(
+        sendSms(to, `Nouveau prospect ${lead.name}${lead.phone ? ` — ${lead.phone}` : ""} (${origine}).`)
+      );
+    }
+  }
+  await Promise.allSettled(tasks);
+}
+
 export async function sendReminder24h(booking: Booking, settings: Settings): Promise<boolean> {
   return sendSms(booking.phone, renderTemplate(settings.smsReminder24h, booking, settings));
 }

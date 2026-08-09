@@ -55,6 +55,19 @@ model Settings {
   smsReminder1h     String   @default("")
   emailSubject      String   @default("")
   emailBody         String   @default("")
+  // Publicités Meta : pixel, connexion du compte et récupération des leads.
+  // Les jetons ne sont jamais renvoyés au navigateur.
+  metaPixelId       String   @default("")
+  metaAppId         String   @default("")
+  metaAppSecret     String   @default("")
+  metaUserToken     String   @default("")
+  metaPageId        String   @default("")
+  metaPageName      String   @default("")
+  metaPageToken     String   @default("")
+  // Jeton de vérification à recopier dans le tableau de bord Meta
+  metaVerifyToken   String   @default("")
+  metaLeadsEnabled  Boolean  @default(true)
+  metaConnectedAt   DateTime?
   // Connexion Google Calendar (OAuth 2.0)
   googleRefreshToken String  @default("")
   googleAccessToken  String  @default("")
@@ -200,7 +213,8 @@ model Document {
   updatedAt     DateTime @updatedAt
 }
 
-// Prospects hors zone d'intervention (formulaire de contact)
+// Prospects : formulaire de contact hors zone (source "site") ou
+// formulaire publicitaire Facebook/Instagram (source "meta").
 model Lead {
   id         String   @id @default(cuid())
   createdAt  DateTime @default(now())
@@ -209,4 +223,13 @@ model Lead {
   email      String   @default("")
   postalCode String
   message    String   @default("")
+  source     String   @default("site") // site | meta
+  // Identifiant du lead chez Meta : empêche les doublons (webhook + import)
+  externalId String?  @unique
+  formName   String   @default("")
+  adName     String   @default("")
+  campaign   String   @default("")
+  // Réponses brutes du formulaire Meta (champs personnalisés inclus)
+  rawJson    String   @default("")
+  handled    Boolean  @default(false)
 }

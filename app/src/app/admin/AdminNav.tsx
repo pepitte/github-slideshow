@@ -52,6 +52,11 @@ const ICONS: Record<string, JSX.Element> = {
       <path d="M7 15l4-5 3 3 4-6" />
     </svg>
   ),
+  meta: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 shrink-0">
+      <path d="M3 16c0-4.5 1.8-8 4.3-8 3.7 0 5.7 8 9.4 8 2.5 0 3.3-2.4 3.3-4.5S19.2 7 16.7 7C13 7 11 15 7.3 15" />
+    </svg>
+  ),
   logout: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 shrink-0">
       <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
@@ -65,6 +70,7 @@ const LINKS = [
   { href: "/admin/planning", label: "Agenda", icon: "agenda" },
   { href: "/admin/terrain", label: "Gestion terrain", icon: "terrain" },
   { href: "/admin/stats", label: "Statistiques", icon: "stats" },
+  { href: "/admin/meta", label: "Publicités Meta", icon: "meta" },
   { href: "/admin/facturation", label: "Devis & Factures", icon: "facturation" },
   { href: "/admin/pros", label: "Professionnels", icon: "pros" },
   { href: "/admin/parametres", label: "Paramètres", icon: "params" },
