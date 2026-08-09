@@ -32,7 +32,21 @@ Branche de travail : `claude/landscaping-booking-platform-ejx6ap`.
 - **Espace admin** (`/admin`) : dashboard RDV avec statuts (à faire / devis
   envoyé / gagné / perdu / annulé), paramètres (horaires, congés, zone, durées,
   textes SMS/email, logo, photos de réalisations), connexion Google en 1 clic.
-- **Meta Pixel** : PageView / Lead / Schedule.
+- **Meta Pixel** : PageView / Lead / Schedule. Identifiant réglable depuis
+  l'admin (`Settings.metaPixelId`, transmis par le layout au composant
+  MetaPixel ; variable d'env en repli). Pixel + bannière RGPD masqués sur
+  `/admin` et `/pro` (ils y interceptaient les clics).
+- **Publicités Meta** (`/admin/meta`, entrée barre latérale, `lib/meta.ts`) :
+  connexion OAuth du compte Facebook/Instagram (scopes pages_show_list,
+  pages_manage_metadata, leads_retrieval, business_management), choix de la
+  page et abonnement à l'événement `leadgen`. Les prospects des formulaires
+  publicitaires arrivent via `/api/meta/webhook` (défi de vérification +
+  signature X-Hub-Signature-256 vérifiée en HMAC), sont dédupliqués par
+  `Lead.externalId` et déclenchent `notifyOwnerNewLead`. Import de rattrapage
+  `POST /api/admin/meta/sync`. `parseLead()` reconnaît les champs anglais,
+  français et prénom+nom séparés. **Aucun jeton n'est renvoyé au navigateur**
+  (`appSecretSet` seulement) ; un champ secret vide n'efface pas la valeur.
+  Le tableau de bord n'affiche que les leads `source: "site"`.
 - **Application mobile (PWA)** : `public/manifest.webmanifest` + icônes
   192/512/maskable/apple générées depuis l'emblème du logo, service worker
   `public/sw.js` **volontairement minimal** (cache l'habillage uniquement ;
@@ -184,10 +198,15 @@ Réplique cliquable du produit, publiée sur claude.ai :
 https://claude.ai/code/artifact/7c97e313-7c8c-4428-9ff7-ce2e4b3836c0
 (l'URL précédente `991329a6-…` est devenue impossible à republier — erreur 403
 persistante côté service ; elle reste figée sur la version du 3 août.)
-Source : conservée dans le scratchpad de session (`demo-arboris-v2.html`) —
-si absente (nouvelle session), la reconstruire n'est pas nécessaire sauf demande ;
-pour la mettre à jour depuis une autre session, passer l'URL ci-dessus au
-paramètre `url` de l'outil Artifact.
+Source : `demo-arboris-v2.html` dans le scratchpad de session. **Le stockage
+temporaire peut être vidé en cours de session** (c'est arrivé le 9 août : le
+fichier et `node_modules` ont disparu, `npm ci` a suffi pour l'app mais la démo
+était perdue). La démo publiée reste en ligne dans sa dernière version publiée ;
+la reconstruire n'est pas nécessaire sauf demande du client. Pour la mettre à
+jour depuis une autre session, passer l'URL ci-dessus au paramètre `url` de
+l'outil Artifact.
+**Version publiée : tout jusqu'aux statistiques ; la section Publicités Meta
+n'y figure pas.**
 
 **Règle : toute modification visuelle/texte se fait aux DEUX endroits — l'app
 réelle (`app/`) ET la démo — puis commit + push + republication de l'artifact.**
