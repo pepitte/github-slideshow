@@ -113,6 +113,11 @@ Docs : `app/ARCHITECTURE.md`.
   journée (PhotoUpload, auto-enregistrées via `PUT /api/pro/pointage`,
   WorkEntry.photosBefore/AfterJson) ; le gérant les voit dans le tableau
   (colonne Photos, ligne dépliable de miniatures).
+  **Rattrapage d'un oubli de pointage** : le pro choisit la journée (jusqu'à
+  7 jours en arrière, futur refusé) et `POST /api/pro/pointage` accepte un
+  `time` HH:mm ; le gérant corrige arrivée/départ directement dans le tableau
+  (`PATCH /api/admin/terrain` avec arrival/departure, "" pour effacer) et peut
+  créer une journée vide (`POST /api/admin/terrain {proId, date}`).
 - **Devis & Factures** (`/admin/facturation`, entrée barre latérale) : modèle
   Document (type devis/facture, numéro unique auto D-2026-001 / F-2026-001,
   lignes itemsJson label/qty/unit/unitPrice, TVA 0/10/20 avec mention art. 293 B
@@ -125,6 +130,10 @@ Docs : `app/ARCHITECTURE.md`.
   avec logo, icônes SVG (Tableau de bord, Agenda, Gestion terrain,
   Devis & Factures, Professionnels, Paramètres) et Déconnexion en bas ; rail d'icônes seul sur
   mobile ; absente de `/admin/login`. Inspirée de la maquette du client.
+  Tableau de bord : **recherche** (nom, tel, email, ville, CP, adresse,
+  description) et **RDV annulés masqués par défaut** (case « Annulés »).
+  Liste des professionnels : lien « Retirer » (confirmation) →
+  `DELETE /api/admin/pros/:id`, pointages supprimés en cascade.
 - **Planning patron** (`/admin/planning`, réservé gérant) : agenda type
   calendrier avec vues **Mois / Semaine / Jour** (défaut : semaine), navigation
   ← Aujourd'hui →. Semaine/Jour = grille horaire 7h-20h avec RDV en blocs
@@ -138,7 +147,9 @@ Docs : `app/ARCHITECTURE.md`.
   pour clients et pros : lien « Mot de passe oublié ? » sur les pages de
   connexion → email avec lien 1 h à usage unique (`/compte/reinitialiser`,
   `/pro/reinitialiser`, composant partagé PasswordResetForm) ; nécessite la clé
-  Resend en prod (sinon email simulé en console).
+  Resend en prod (sinon email simulé en console). **Limite de tentatives**
+  (`lib/rateLimit.ts`, compteur mémoire par IP) sur les 3 pages de connexion :
+  3 échecs → 429 « Trop de tentatives » pendant 15 min, remise à zéro au succès.
 - **Déploiement** : Vercel plan Hobby (cron rappels 1×/jour à 6h UTC). Fusion des
   PR vers `main` via l'outil GitHub (le client n'a pas à le faire) → redeploy auto.
 
