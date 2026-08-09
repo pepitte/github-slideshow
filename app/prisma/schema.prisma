@@ -224,12 +224,16 @@ model Lead {
   postalCode String
   message    String   @default("")
   source     String   @default("site") // site | meta
-  // Identifiant du lead chez Meta : empêche les doublons (webhook + import)
-  externalId String?  @unique
+  // Identifiant du lead chez Meta : sert à écarter les doublons (webhook + import).
+  // Simple index, pas de contrainte d'unicité : `prisma db push` refuse d'ajouter
+  // une contrainte unique sans confirmation, ce qui bloquerait le déploiement.
+  externalId String?
   formName   String   @default("")
   adName     String   @default("")
   campaign   String   @default("")
   // Réponses brutes du formulaire Meta (champs personnalisés inclus)
   rawJson    String   @default("")
   handled    Boolean  @default(false)
+
+  @@index([externalId])
 }

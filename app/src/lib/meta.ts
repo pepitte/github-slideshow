@@ -187,7 +187,7 @@ export function parseLead(lead: MetaLead, formName = "") {
 
 /** Enregistre un prospect Meta, sans jamais créer de doublon. */
 export async function saveLead(parsed: ReturnType<typeof parseLead>): Promise<boolean> {
-  const existing = await prisma.lead.findUnique({ where: { externalId: parsed.externalId } });
+  const existing = await prisma.lead.findFirst({ where: { externalId: parsed.externalId } });
   if (existing) return false;
   const { createdAt, ...rest } = parsed;
   await prisma.lead.create({
