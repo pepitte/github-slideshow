@@ -28,11 +28,14 @@ Branche de travail : `claude/landscaping-booking-platform-ejx6ap`.
   par le serveur et leur longueur / motif de refus Resend traduit).
 - **Anti double-booking** : Google Calendar OAuth (freeBusy en direct) + RDV
   en BDD + revérification du créneau à la soumission. Buffer trajet paramétrable.
-- **Créneaux liés aux dispos des pros** (`Settings.proFilterMode` : off /
-  chantier (défaut) / tous) : `getProCoverage()` ne laisse passer que les jours
-  couverts par un pro « disponible chantier » et les jour+heure couverts par un
-  pro « disponible devis ». Filet de sécurité : si aucun pro n'a déclaré de
-  date, le filtre est ignoré.
+- **Créneaux devis des pros réservables (option B, 10 août)** : chaque pro
+  « disponible devis » déclare ses créneaux **jour par jour à la demi-heure**
+  (`Pro.devisDispoJson` : `{"2026-08-13":["10:00","17:00"]}`). Côté client,
+  `getAvailability()` propose l'union horaires du gérant ∪ créneaux des pros
+  à portée (un jour fermé côté gérant reste proposé si un pro a déclaré) ;
+  une visite réservée sur un créneau pro est attribuée au plus proche
+  (`assignDevis`, `notifyProNewDevis`), sinon `proId = null` = visite du
+  gérant. Un créneau pris ne bloque que le pro concerné.
 - **Attribution automatique des chantiers** (`lib/assign.ts`, choix du client
   10 août) : dès qu'un pro a déclaré des dates chantier (« mode équipe »),
   capacité = **un chantier/jour/pro**, l'agenda Google du gérant ne bloque plus
@@ -42,10 +45,13 @@ Branche de travail : `claude/landscaping-booking-platform-ejx6ap`.
   Distances via table embarquée `lib/data/cp-gps.json` (6 188 CP français,
   151 Ko, haversine dans `lib/geo.ts`) — aucun service externe. Le tunnel passe
   le CP client (`/api/availability?cp=`) : seuls les jours couverts par un pro à
-  portée sont proposés. Personne d'éligible → `Booking.proId = null` (« À
+  portée sont proposés. **Même interlocuteur du devis au chantier** : le pro
+  qui a fait la visite devis du client (`proDeLaVisite`, matché par email ou
+  téléphone) est prioritaire pour son chantier s'il est éligible. Personne
+  d'éligible → `Booking.proId = null` (« À
   attribuer », badge orange admin) + alerte gérant. Désistement pro (« Je ne
-  peux pas », `POST /api/pro/missions`) → réattribution auto au suivant
-  (`declinedProsJson` anti ping-pong) + `notifyOwnerReassign`. Le gérant
+  peux pas », `POST /api/pro/missions`, devis comme chantiers) → réattribution
+  auto au suivant (`declinedProsJson` anti ping-pong) + `notifyOwnerReassign`. Le gérant
   réattribue via sélecteur dans la fiche (`PATCH /api/admin/bookings/:id
   {proId}`). Le pro attribué est prévenu par email (`notifyProNewChantier`) et
   voit **le téléphone du client** ; les autres pros non (équipe anonymisée :
@@ -132,8 +138,10 @@ Docs : `app/ARCHITECTURE.md`.
   « Mes coordonnées » modifiable dans `/compte` (`PATCH /api/client/me`) :
   alerte orange tant que l'adresse manque (comptes créés avant la nouveauté).
 - **Espace professionnel** (`/pro`, inscription libre) : statut de dispo (🔵 devis
-  / 🟢 chantier / 🟠 sous confirmation / 🔴 indispo — code couleur unifié avec les
-  RDV : bleu = devis, vert = chantier), créneaux devis, dates. **Adresse de
+  / 🟢 chantier / 🔴 indispo — « sous confirmation » **retiré des choix** le
+  10 août (friction inutile, décision client), gardé dans `PRO_STATUS_META`
+  pour l'affichage des anciens comptes ; code couleur unifié avec les
+  RDV : bleu = devis, vert = chantier). **Adresse de
   départ + rayon demandés à l'inscription** (Pro.baseAddress/basePostalCode/
   baseCity/radiusKm) pour connaître le secteur ; la section « Vos informations »
   a été retirée de `/pro`. **Espace pro restructuré (10 août) : barre latérale
@@ -141,9 +149,15 @@ Docs : `app/ARCHITECTURE.md`.
   mobile, absente de login/reinitialiser) avec 4 sections : `/pro` = tableau de
   bord (tuiles cliquables Chantiers/Heures/Statut, carte « Mon prochain
   chantier » avec Itinéraire/Appeler/« Je ne peux pas », aperçu 5 jours),
-  `/pro/chantiers` (liste : siens en vert, équipe en gris ; bascule « Vue
+  `/pro/chantiers` « Chantiers & visites » (liste : ses chantiers en vert,
+  ses visites devis en bleu avec badge et heure, équipe en gris ; bascule « Vue
   semaine » vers `AgendaView` sans téléphones), `/pro/pointage` (Ma journée +
-  photos), `/pro/disponibilites` (statut, créneaux devis, calendrier de dates).
+  photos), `/pro/disponibilites` **refaite (10 août)** : 3 statuts en boutons,
+  puis calendrier — mode chantier : un tap = jour disponible ; mode devis : un
+  tap ouvre le panneau du jour (créneaux 30 min 8h→19h30 + raccourcis Fin de
+  journée / Matin / Après-midi / Effacer, pastille bleue = nb de créneaux) ;
+  tout s'auto-enregistre (`PUT /api/pro/me {devisDispo}`), aucun bouton
+  Enregistrer ; indisponible conserve les données.
   Aides partagées dans `pro/shared.ts`. API `GET/POST /api/pro/missions`.
   Vue gérant : onglet « Professionnels » dans `/admin` (adresse complète
   affichée).
