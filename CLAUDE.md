@@ -136,12 +136,15 @@ Docs : `app/ARCHITECTURE.md`.
   RDV : bleu = devis, vert = chantier), créneaux devis, dates. **Adresse de
   départ + rayon demandés à l'inscription** (Pro.baseAddress/basePostalCode/
   baseCity/radiusKm) pour connaître le secteur ; la section « Vos informations »
-  a été retirée de `/pro`. **Tableau de bord pro (refonte 10 août)** : « Ma
-  journée » (pointage + photos), « Mon prochain chantier » (client, adresse,
-  téléphone, boutons Itinéraire/Appeler, « Je ne peux pas »), « Mes prochains
-  jours » (liste mobile : ses chantiers en vert, l'équipe en gris ; bascule
-  « Vue semaine » vers `AgendaView` sans téléphones), « Mes heures pointées »
-  (semaine/mois), puis statut/créneaux/dates. API `GET/POST /api/pro/missions`.
+  a été retirée de `/pro`. **Espace pro restructuré (10 août) : barre latérale
+  `ProNav` + `pro/layout.tsx`** (même style que l'admin, rail d'icônes sur
+  mobile, absente de login/reinitialiser) avec 4 sections : `/pro` = tableau de
+  bord (tuiles cliquables Chantiers/Heures/Statut, carte « Mon prochain
+  chantier » avec Itinéraire/Appeler/« Je ne peux pas », aperçu 5 jours),
+  `/pro/chantiers` (liste : siens en vert, équipe en gris ; bascule « Vue
+  semaine » vers `AgendaView` sans téléphones), `/pro/pointage` (Ma journée +
+  photos), `/pro/disponibilites` (statut, créneaux devis, calendrier de dates).
+  Aides partagées dans `pro/shared.ts`. API `GET/POST /api/pro/missions`.
   Vue gérant : onglet « Professionnels » dans `/admin` (adresse complète
   affichée).
 - **Connexion unifiée** : `/connexion` (choix particulier / professionnel).
