@@ -8,6 +8,21 @@ export const dynamic = "force-dynamic";
 
 const STATUSES = ["a_faire", "devis_envoye", "gagne", "perdu", "annule"];
 
+/**
+ * GET /api/admin/bookings/:id — les photos d'un RDV, chargées seulement à
+ * l'ouverture de la fiche (elles sont trop lourdes pour la liste).
+ */
+export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+  if (!isAdminAuthenticated()) {
+    return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
+  }
+  const photos = await prisma.photo.findMany({
+    where: { bookingId: params.id },
+    select: { id: true, dataUrl: true },
+  });
+  return NextResponse.json({ photos });
+}
+
 // PATCH /api/admin/bookings/:id { status?, description?, photos? } —
 // statut, notes ou photos (fiche du devis) mis à jour par le gérant.
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {

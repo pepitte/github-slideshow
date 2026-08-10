@@ -1,7 +1,7 @@
 // Orchestration des notifications liées à un RDV.
 import type { Booking, Pro, Settings } from "@prisma/client";
 import { sendSms } from "./sms";
-import { sendEmail } from "./email";
+import { sendEmail, sendEmailChecked } from "./email";
 import { buildIcs } from "./ics";
 import { renderTemplate } from "./templates";
 import { formatDateFr, formatTimeFr } from "./dates";
@@ -17,6 +17,11 @@ export function ownerEmailOf(settings: Settings): string {
 
 export function ownerPhoneOf(settings: Settings): string {
   return settings.ownerPhone || settings.companyPhone || "";
+}
+
+/** Expéditeur des emails : réglage de l'admin, sinon variable d'environnement. */
+export function expediteurOf(settings: Settings): string {
+  return settings.emailFrom.trim();
 }
 
 const PROJECT_LABELS: Record<string, string> = {
@@ -45,7 +50,8 @@ export async function notifyOwnerNewBooking(
   booking: Booking,
   settings: Settings,
   groupDates?: Date[],
-  proLabel?: string
+  proLabel?: string,
+  confirmation?: ConfirmationResult
 ): Promise<void> {
   const quand = whenLabel(booking, groupDates);
   const type = booking.kind === "chantier" ? "chantier" : "devis";
@@ -61,6 +67,7 @@ export async function notifyOwnerNewBooking(
       tasks.push(
         sendEmail({
           to,
+          from: expediteurOf(settings),
           subject: `Nouveau RDV ${type} — ${client} (${quand})`,
           text: [
             `Nouvelle réservation sur votre site :`,
@@ -75,6 +82,11 @@ export async function notifyOwnerNewBooking(
             proLabel ? `Attribué à : ${proLabel}` : "",
             booking.description ? `Message    : ${booking.description}` : "",
             ``,
+            // Le client croit avoir reçu une confirmation : si elle n'est pas
+            // partie, il faut le savoir tout de suite pour le rappeler.
+            confirmation && !confirmation.emailOk
+              ? `/!\\ L'EMAIL DE CONFIRMATION AU CLIENT N'EST PAS PARTI (${confirmation.emailError ?? "motif inconnu"}).\n    Pensez à le contacter. Réglage : Paramètres > Emails envoyés aux clients.\n`
+              : "",
             `Retrouvez ce rendez-vous dans votre tableau de bord.`,
           ]
             .filter(Boolean)
@@ -127,6 +139,7 @@ export async function notifyProNewChantier(
     .join(", ");
   await sendEmail({
     to: pro.email,
+    from: expediteurOf(settings),
     subject: `Nouveau chantier : ${joursFr(days)} — ${booking.city || booking.postalCode}`,
     text: [
       `Bonjour ${pro.name},`,
@@ -165,6 +178,7 @@ export async function notifyProNewDevis(
   const quand = `${formatDateFr(booking.startAt)} à ${formatTimeFr(booking.startAt)}`;
   await sendEmail({
     to: pro.email,
+    from: expediteurOf(settings),
     subject: `Nouvelle visite devis : ${quand} — ${booking.city || booking.postalCode}`,
     text: [
       `Bonjour ${pro.name},`,
@@ -202,6 +216,7 @@ export async function notifyOwnerReassign(
   const quand = whenLabel(booking);
   await sendEmail({
     to,
+    from: expediteurOf(settings),
     subject: nouveau
       ? `${booking.kind === "devis" ? "Visite devis réattribuée" : "Chantier réattribué"} : ${quand}`
       : `${booking.kind === "devis" ? "Visite devis SANS professionnel" : "Chantier SANS professionnel"} : ${quand}`,
@@ -218,25 +233,34 @@ export async function notifyOwnerReassign(
   });
 }
 
+/** Résultat de la confirmation au client, pour pouvoir alerter le gérant. */
+export type ConfirmationResult = { emailOk: boolean; emailError?: string };
+
 /** SMS + email de confirmation, envoyés immédiatement après la réservation.
- *  `groupDates` : chantier multi-jours ({{date}} devient « du … au … »). */
+ *  `groupDates` : chantier multi-jours ({{date}} devient « du … au … »).
+ *  Renvoie l'issue de l'email : tant qu'aucun domaine n'est vérifié chez
+ *  Resend, il est refusé et le gérant doit le savoir. */
 export async function sendConfirmation(
   booking: Booking,
   settings: Settings,
   groupDates?: Date[]
-): Promise<void> {
+): Promise<ConfirmationResult> {
   const smsBody = renderTemplate(settings.smsConfirmation, booking, settings, groupDates);
   const emailSubject = renderTemplate(settings.emailSubject, booking, settings, groupDates);
   const emailBody = renderTemplate(settings.emailBody, booking, settings, groupDates);
-  await Promise.allSettled([
-    sendSms(booking.phone, smsBody),
-    sendEmail({
-      to: booking.email,
-      subject: emailSubject,
-      text: emailBody,
-      icsContent: buildIcs(booking, settings),
-    }),
+  const [, email] = await Promise.all([
+    sendSms(booking.phone, smsBody).catch(() => false),
+    booking.email
+      ? sendEmailChecked({
+          to: booking.email,
+          from: expediteurOf(settings),
+          subject: emailSubject,
+          text: emailBody,
+          icsContent: buildIcs(booking, settings),
+        }).catch((e) => ({ ok: false, error: String(e) }))
+      : Promise.resolve({ ok: false, error: "aucune adresse email" }),
   ]);
+  return { emailOk: email.ok, emailError: email.ok ? undefined : email.error };
 }
 
 /**
@@ -266,6 +290,7 @@ export async function notifyOwnerNewLead(
       tasks.push(
         sendEmail({
           to,
+          from: expediteurOf(settings),
           subject: `Nouveau prospect — ${lead.name}${lead.postalCode ? ` (${lead.postalCode})` : ""}`,
           text: [
             `Nouveau prospect à rappeler (${origine}) :`,

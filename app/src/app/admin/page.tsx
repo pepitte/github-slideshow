@@ -25,7 +25,7 @@ type Booking = {
   status: string;
   proId: string | null;
   pro: { id: string; name: string } | null;
-  photos: Photo[];
+  photosCount: number;
 };
 type ProLite = {
   id: string;
@@ -99,9 +99,20 @@ export default function AdminDashboard() {
   const [notesDraft, setNotesDraft] = useState("");
   const [notesSaved, setNotesSaved] = useState(false);
   const [notesError, setNotesError] = useState("");
+  // Les photos ne sont plus dans la liste : on les charge à l'ouverture d'une
+  // fiche, sinon le tableau de bord téléchargerait toutes les images à chaque
+  // ouverture (des dizaines de Mo au bout de quelques mois).
+  const [photos, setPhotos] = useState<Record<string, Photo[]>>({});
+  const [photosLoading, setPhotosLoading] = useState<string | null>(null);
+  const [tronque, setTronque] = useState(false);
 
-  function load() {
-    fetch("/api/admin/bookings")
+  function load(opts?: { past?: boolean; q?: string }) {
+    const past = opts?.past ?? showPast;
+    const q = (opts?.q ?? search).trim();
+    const params = new URLSearchParams();
+    if (past) params.set("past", "1");
+    if (q) params.set("q", q);
+    fetch(`/api/admin/bookings?${params.toString()}`)
       .then((r) => {
         if (r.status === 401) {
           window.location.href = "/admin/login";
@@ -113,11 +124,20 @@ export default function AdminDashboard() {
         setBookings(data.bookings ?? []);
         setLeads(data.leads ?? []);
         setPros(data.pros ?? []);
+        setTronque(Boolean(data.tronque));
       })
       .finally(() => setLoading(false));
   }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(load, []);
+
+  // Recherche et historique : nouvelle requête (l'ancienne version filtrait
+  // une liste déjà entièrement téléchargée).
+  useEffect(() => {
+    const t = setTimeout(() => load({ past: showPast, q: search }), 350);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showPast, search]);
 
   function openCard(b: Booking) {
     const isOpen = expanded === b.id;
@@ -126,6 +146,20 @@ export default function AdminDashboard() {
       setNotesDraft(b.description);
       setNotesSaved(false);
       setNotesError("");
+      if (photos[b.id] === undefined) chargerPhotos(b.id);
+    }
+  }
+
+  async function chargerPhotos(id: string) {
+    setPhotosLoading(id);
+    try {
+      const res = await fetch(`/api/admin/bookings/${id}`);
+      const data = res.ok ? await res.json() : { photos: [] };
+      setPhotos((p) => ({ ...p, [id]: data.photos ?? [] }));
+    } catch {
+      setPhotos((p) => ({ ...p, [id]: [] }));
+    } finally {
+      setPhotosLoading(null);
     }
   }
 
@@ -170,7 +204,9 @@ export default function AdminDashboard() {
     });
     if (res.ok) {
       const data = await res.json();
-      setBookings((bs) => bs.map((b) => (b.id === id ? { ...b, photos: data.booking.photos } : b)));
+      const liste: Photo[] = data.booking.photos ?? [];
+      setPhotos((p) => ({ ...p, [id]: liste }));
+      setBookings((bs) => bs.map((b) => (b.id === id ? { ...b, photosCount: liste.length } : b)));
     }
   }
 
@@ -183,19 +219,9 @@ export default function AdminDashboard() {
     });
   }
 
-  const now = Date.now();
-  const q = search.trim().toLowerCase();
-  // Les devis « sans date » restent toujours visibles, en tête de liste.
-  // Les RDV annulés sont masqués sauf demande explicite.
-  const visible = bookings.filter((b) => {
-    if (!showCancelled && b.status === "annule") return false;
-    if (b.startAt && !showPast && new Date(b.startAt).getTime() < now - 24 * 3600_000) return false;
-    if (!q) return true;
-    return [b.firstName, b.lastName, b.phone, b.email, b.city, b.postalCode, b.address, b.description]
-      .join(" ")
-      .toLowerCase()
-      .includes(q);
-  });
+  // La fenêtre (à venir / historique) et la recherche sont faites par le
+  // serveur ; il ne reste ici que le masquage des RDV annulés.
+  const visible = bookings.filter((b) => showCancelled || b.status !== "annule");
   visible.sort((a, b) => {
     if (!a.startAt) return -1;
     if (!b.startAt) return 1;
@@ -211,6 +237,11 @@ export default function AdminDashboard() {
             <input type="checkbox" checked={showPast} onChange={(e) => setShowPast(e.target.checked)} />
             RDV passés
           </label>
+          {tronque && (
+            <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
+              Liste limitée aux 200 plus proches — affinez la recherche
+            </span>
+          )}
           <label className="flex items-center gap-2 text-sm text-leaf-800/70">
             <input type="checkbox" checked={showCancelled} onChange={(e) => setShowCancelled(e.target.checked)} />
             Annulés
@@ -231,7 +262,11 @@ export default function AdminDashboard() {
       {loading && <p className="py-8 text-center text-leaf-800/60">Chargement…</p>}
       {!loading && visible.length === 0 && (
         <p className="card py-8 text-center text-leaf-800/60">
-          {q ? "Aucun rendez-vous ne correspond à cette recherche." : "Aucun rendez-vous pour le moment."}
+          {search.trim()
+            ? "Aucun rendez-vous ne correspond à cette recherche."
+            : showPast
+              ? "Aucun rendez-vous pour le moment."
+              : "Aucun rendez-vous à venir. Cochez « RDV passés » pour voir l'historique."}
         </p>
       )}
 
@@ -345,12 +380,18 @@ export default function AdminDashboard() {
                     </div>
                   </div>
 
-                  <PhotoUpload
-                    photos={b.photos.map((p) => p.dataUrl)}
-                    onChange={(urls) => savePhotos(b.id, urls)}
-                    label="Photos (10 max)"
-                    maxPhotos={10}
-                  />
+                  {photosLoading === b.id && photos[b.id] === undefined ? (
+                    <p className="rounded-xl bg-sand-50 px-3 py-2 text-sm text-leaf-800/60">
+                      Chargement des {b.photosCount} photo(s)…
+                    </p>
+                  ) : (
+                    <PhotoUpload
+                      photos={(photos[b.id] ?? []).map((p) => p.dataUrl)}
+                      onChange={(urls) => savePhotos(b.id, urls)}
+                      label="Photos (10 max)"
+                      maxPhotos={10}
+                    />
+                  )}
                   <div>
                     <span className="label">Statut</span>
                     <div className="flex flex-wrap gap-2">

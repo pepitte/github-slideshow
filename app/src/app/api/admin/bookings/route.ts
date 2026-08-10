@@ -6,20 +6,65 @@ import { parisTimeToUtc } from "@/lib/dates";
 
 export const dynamic = "force-dynamic";
 
-// GET /api/admin/bookings — liste des RDV (photos incluses) pour le tableau de bord.
-export async function GET() {
+// Au-delà, on ne charge pas tout : le tableau de bord doit rester rapide même
+// après des centaines de rendez-vous.
+const MAX_RESULTATS = 200;
+
+/**
+ * GET /api/admin/bookings?past=1&q=… — liste des RDV du tableau de bord.
+ *
+ * Les photos ne sont JAMAIS renvoyées ici (ce sont des images en base64, très
+ * lourdes) : seul leur nombre l'est, et la fiche les charge à son ouverture.
+ * Par défaut on ne renvoie que les RDV utiles au quotidien (à venir, plus les
+ * devis sans date) ; `past=1` remonte l'historique et `q` cherche dans tout.
+ */
+export async function GET(req: NextRequest) {
   if (!isAdminAuthenticated()) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   }
-  const bookings = await prisma.booking.findMany({
-    orderBy: { startAt: "asc" },
-    include: {
-      photos: { select: { id: true, dataUrl: true } },
-      pro: { select: { id: true, name: true } },
-    },
-  });
+  const past = req.nextUrl.searchParams.get("past") === "1";
+  const q = (req.nextUrl.searchParams.get("q") ?? "").trim();
+  const depuis = new Date(Date.now() - 24 * 3600_000);
+
+  // Recherche ou historique demandé → on ouvre la fenêtre à tout l'historique.
+  const fenetre =
+    past || q
+      ? {}
+      : { OR: [{ startAt: { gte: depuis } }, { startAt: null }] };
+
+  const recherche = q
+    ? {
+        OR: [
+          { firstName: { contains: q, mode: "insensitive" as const } },
+          { lastName: { contains: q, mode: "insensitive" as const } },
+          { phone: { contains: q, mode: "insensitive" as const } },
+          { email: { contains: q, mode: "insensitive" as const } },
+          { city: { contains: q, mode: "insensitive" as const } },
+          { postalCode: { contains: q, mode: "insensitive" as const } },
+          { address: { contains: q, mode: "insensitive" as const } },
+          { description: { contains: q, mode: "insensitive" as const } },
+        ],
+      }
+    : {};
+
+  const where = { AND: [fenetre, recherche] };
+
+  const [bookings, total] = await Promise.all([
+    prisma.booking.findMany({
+      where,
+      orderBy: { startAt: "asc" },
+      take: MAX_RESULTATS,
+      include: {
+        // Le nombre de photos suffit à la liste ; les images arrivent au clic.
+        _count: { select: { photos: true } },
+        pro: { select: { id: true, name: true } },
+      },
+    }),
+    prisma.booking.count({ where }),
+  ]);
+
   const pros = await prisma.pro.findMany({
-    select: { id: true, name: true, basePostalCode: true, radiusKm: true, status: true },
+    select: { id: true, name: true, basePostalCode: true, radiusKm: true, datesJson: true },
     orderBy: { name: "asc" },
   });
   // Les prospects venus des publicités ont leur propre section (Publicités Meta).
@@ -28,7 +73,13 @@ export async function GET() {
     orderBy: { createdAt: "desc" },
     take: 50,
   });
-  return NextResponse.json({ bookings, leads, pros });
+  return NextResponse.json({
+    bookings: bookings.map(({ _count, ...b }) => ({ ...b, photosCount: _count.photos })),
+    leads,
+    pros,
+    total,
+    tronque: total > bookings.length,
+  });
 }
 
 /** Photos valides : data URLs image, 10 max. */
