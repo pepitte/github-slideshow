@@ -4,6 +4,7 @@ import { isAdminAuthenticated } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
 import { geocode } from "@/lib/zone";
 import { googleConfigured } from "@/lib/google";
+import { emailConfigured, usingTestSender } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,10 @@ function sanitize(settings: Awaited<ReturnType<typeof getSettings>>) {
     ...rest,
     googleConnected: Boolean(googleRefreshToken),
     googleConfigured: googleConfigured(),
+    // Diagnostic des emails clients : la clé est-elle là, et un expéditeur
+    // vérifié est-il renseigné ? Sans lui, seul le gérant reçoit ses alertes.
+    emailConfigured: emailConfigured(),
+    emailClientsOk: emailConfigured() && !usingTestSender(settings.emailFrom),
   };
 }
 
@@ -75,6 +80,7 @@ export async function PUT(req: NextRequest) {
     notifyOwnerSms: typeof body.notifyOwnerSms === "boolean" ? body.notifyOwnerSms : undefined,
     ownerEmail: str("ownerEmail"),
     ownerPhone: str("ownerPhone"),
+    emailFrom: str("emailFrom"),
     proFilterMode: ["off", "chantier", "tous"].includes(str("proFilterMode") ?? "")
       ? str("proFilterMode")
       : undefined,

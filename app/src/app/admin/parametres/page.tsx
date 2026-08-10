@@ -40,6 +40,9 @@ type SettingsView = {
   notifyOwnerSms: boolean;
   ownerEmail: string;
   ownerPhone: string;
+  emailFrom: string;
+  emailConfigured: boolean;
+  emailClientsOk: boolean;
   proFilterMode: string;
   smsConfirmation: string;
   smsReminder24h: string;
@@ -64,6 +67,12 @@ export default function AdminSettingsPage() {
   const [testMsg, setTestMsg] = useState("");
   const [testOk, setTestOk] = useState(false);
   const [testing, setTesting] = useState(false);
+  // Test d'envoi vers une adresse quelconque : le seul moyen de vérifier que
+  // les confirmations partent vraiment aux clients.
+  const [testClientTo, setTestClientTo] = useState("");
+  const [testClientMsg, setTestClientMsg] = useState("");
+  const [testClientOk, setTestClientOk] = useState(false);
+  const [testingClient, setTestingClient] = useState(false);
   const [gallery, setGallery] = useState<string[]>([]);
   const [gallerySaved, setGallerySaved] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -153,6 +162,7 @@ export default function AdminSettingsPage() {
         notifyOwnerEmail: s.notifyOwnerEmail,
         notifyOwnerSms: s.notifyOwnerSms,
         ownerEmail: s.ownerEmail,
+        emailFrom: s.emailFrom,
         ownerPhone: s.ownerPhone,
         proFilterMode: s.proFilterMode,
         smsConfirmation: s.smsConfirmation,
@@ -179,6 +189,23 @@ export default function AdminSettingsPage() {
     setTesting(false);
     setTestOk(Boolean(data.ok));
     setTestMsg(data.message ?? data.error ?? "Test impossible.");
+  }
+
+  // Test « côté client » : on écrit à une adresse choisie, comme le ferait une
+  // confirmation de rendez-vous.
+  async function testerEmailClient() {
+    setTestingClient(true);
+    setTestClientMsg("");
+    await save();
+    const res = await fetch("/api/admin/test-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ to: testClientTo.trim() }),
+    });
+    const data = await res.json();
+    setTestingClient(false);
+    setTestClientOk(Boolean(data.ok));
+    setTestClientMsg(data.message ?? data.error ?? "Test impossible.");
   }
 
   return (
@@ -497,6 +524,81 @@ export default function AdminSettingsPage() {
                 }`}
               >
                 {testMsg}
+              </p>
+            )}
+          </div>
+        </section>
+
+        {/* Emails envoyés aux clients */}
+        <section className="card space-y-3">
+          <h2 className="font-bold">Emails envoyés à vos clients</h2>
+          <p
+            className={`rounded-xl px-3 py-2 text-sm ${
+              s.emailClientsOk ? "bg-leaf-50 text-leaf-800" : "bg-amber-50 text-amber-900"
+            }`}
+          >
+            {!s.emailConfigured ? (
+              <>
+                <b>Aucun email ne part pour l&apos;instant.</b> La clé Resend n&apos;est pas active
+                sur le site.
+              </>
+            ) : s.emailClientsOk ? (
+              <>
+                <b>✓ Vos clients reçoivent bien leur confirmation</b>, envoyée depuis{" "}
+                <b>{s.emailFrom}</b>. Vérifiez-le de temps en temps avec le bouton de test
+                ci-dessous.
+              </>
+            ) : (
+              <>
+                <b>Vos clients ne reçoivent PAS leur confirmation.</b> Sans adresse d&apos;expédition
+                à vous, Resend n&apos;écrit qu&apos;au propriétaire du compte — donc à vous seul.
+                Marche à suivre : vérifiez votre nom de domaine dans Resend (il vous donne des lignes
+                à recopier chez OVH), puis indiquez ci-dessous l&apos;adresse d&apos;expédition.
+              </>
+            )}
+          </p>
+          <div>
+            <span className="label">Adresse qui apparaît comme expéditeur</span>
+            <input
+              className="input"
+              placeholder="Arboris Paysage <contact@arborispaysage.eu>"
+              value={s.emailFrom}
+              onChange={(e) => set({ emailFrom: e.target.value })}
+            />
+            <p className="mt-1 text-xs text-leaf-800/60">
+              Le domaine de cette adresse doit être vérifié dans Resend. Laissez vide tant que ce
+              n&apos;est pas fait : les alertes continueront de vous parvenir.
+            </p>
+          </div>
+          <div className="border-t border-leaf-100 pt-3">
+            <span className="label">Vérifier qu&apos;un client reçoit bien l&apos;email</span>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <input
+                className="input flex-1"
+                type="email"
+                placeholder="Une autre adresse à vous (Gmail, Orange…)"
+                value={testClientTo}
+                onChange={(e) => setTestClientTo(e.target.value)}
+              />
+              <button
+                className="btn-secondary whitespace-nowrap"
+                onClick={testerEmailClient}
+                disabled={testingClient || !testClientTo.trim()}
+              >
+                {testingClient ? "Envoi en cours…" : "Envoyer un test"}
+              </button>
+            </div>
+            <p className="mt-1 text-xs text-leaf-800/60">
+              Utilisez une adresse <b>différente</b> de celle de votre compte Resend : c&apos;est la
+              seule façon de prouver que vos clients reçoivent vraiment leurs confirmations.
+            </p>
+            {testClientMsg && (
+              <p
+                className={`mt-2 rounded-xl px-3 py-2 text-sm ${
+                  testClientOk ? "bg-leaf-50 text-leaf-800" : "bg-red-50 text-red-700"
+                }`}
+              >
+                {testClientMsg}
               </p>
             )}
           </div>

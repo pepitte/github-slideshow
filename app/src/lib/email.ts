@@ -10,7 +10,17 @@ export type EmailOptions = {
   subject: string;
   text: string;
   icsContent?: string;
+  /** Expéditeur (réglable depuis l'admin). Vide = EMAIL_FROM, puis adresse d'essai Resend. */
+  from?: string;
 };
+
+/** Adresse d'essai de Resend : n'écrit qu'au propriétaire du compte. */
+export const EXPEDITEUR_ESSAI = "RDV <onboarding@resend.dev>";
+
+/** Vrai tant qu'aucun domaine vérifié n'est configuré (emails clients bloqués). */
+export function usingTestSender(settingsFrom?: string): boolean {
+  return !(settingsFrom?.trim() || process.env.EMAIL_FROM || "").trim();
+}
 
 export async function sendEmail(options: EmailOptions): Promise<boolean> {
   return (await sendEmailChecked(options)).ok;
@@ -26,7 +36,7 @@ export async function sendEmailChecked(
   }
   try {
     const body: Record<string, unknown> = {
-      from: process.env.EMAIL_FROM || "RDV <onboarding@resend.dev>",
+      from: options.from?.trim() || process.env.EMAIL_FROM || EXPEDITEUR_ESSAI,
       to: [options.to],
       subject: options.subject,
       text: options.text,

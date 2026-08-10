@@ -44,6 +44,11 @@ model Settings {
   notifyOwnerSms    Boolean  @default(false)
   ownerEmail        String   @default("")
   ownerPhone        String   @default("")
+  // Adresse expéditrice des emails (« Arboris Paysage <contact@arborispaysage.eu> »).
+  // Doit appartenir à un domaine vérifié chez Resend, sinon seuls les emails
+  // adressés au propriétaire du compte Resend partent. Vide = repli sur
+  // EMAIL_FROM, puis sur l'adresse d'essai de Resend.
+  emailFrom         String   @default("")
   // Ne proposer que les créneaux couverts par un pro disponible :
   // "off" = jamais, "chantier" = chantiers seulement, "tous" = devis + chantiers.
   // Sécurité : si aucun pro n'a déclaré la moindre disponibilité, le filtre est
