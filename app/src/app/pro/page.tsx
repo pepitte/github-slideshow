@@ -256,6 +256,37 @@ export default function ProDashboard() {
         </button>
       </div>
 
+      {/* Tableau de bord : l'essentiel en un coup d'œil, même à zéro */}
+      <div className="mb-4 grid grid-cols-3 gap-2">
+        <div className="card !p-3 text-center">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-leaf-800/50">
+            Chantiers à venir
+          </p>
+          <p className="text-2xl font-bold text-leaf-900">{missions.length}</p>
+          <p className="text-[11px] text-leaf-800/60">
+            {missions.length > 0 ? `prochain : ${labelJour(missions[0].day, ymd(new Date())).toLowerCase()}` : "attribués à vous"}
+          </p>
+        </div>
+        <div className="card !p-3 text-center">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-leaf-800/50">
+            Heures semaine
+          </p>
+          <p className="text-2xl font-bold text-leaf-900">
+            {heures?.semaine ? heuresLabel(heures.semaine) : "0h"}
+          </p>
+          <p className="text-[11px] text-leaf-800/60">
+            {heures?.mois ? `${heuresLabel(heures.mois)} ce mois-ci` : "pointées"}
+          </p>
+        </div>
+        <div className="card !p-3 text-center">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-leaf-800/50">Statut</p>
+          <p className="mx-auto mt-1.5 h-5 w-5 rounded-full" style={{ background: (PRO_STATUS_META[pro.status] ?? PRO_STATUS_META.indisponible).dot }} />
+          <p className="mt-1 text-[11px] font-semibold text-leaf-800/80">
+            {(PRO_STATUS_META[pro.status] ?? PRO_STATUS_META.indisponible).label.replace("Disponible pour un ", "").replace("Disponible sous ", "Sous ")}
+          </p>
+        </div>
+      </div>
+
       {/* Pointage du jour : visible par le gérant dans « Gestion terrain » */}
       <section className="card mb-4 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -460,23 +491,6 @@ export default function ProDashboard() {
           </div>
         )}
       </section>
-
-      {/* Heures pointées */}
-      {heures && (
-        <section className="card mb-4">
-          <h2 className="mb-2 font-bold">Mes heures pointées</h2>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-xl bg-sand-50 px-3 py-2 text-center">
-              <p className="text-xs text-leaf-800/60">Cette semaine</p>
-              <p className="text-lg font-bold">{heures.semaine ? heuresLabel(heures.semaine) : "—"}</p>
-            </div>
-            <div className="rounded-xl bg-sand-50 px-3 py-2 text-center">
-              <p className="text-xs text-leaf-800/60">Ce mois-ci</p>
-              <p className="text-lg font-bold">{heures.mois ? heuresLabel(heures.mois) : "—"}</p>
-            </div>
-          </div>
-        </section>
-      )}
 
       {/* Statut */}
       <section className="card space-y-3">
