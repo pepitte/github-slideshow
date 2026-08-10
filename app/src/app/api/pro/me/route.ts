@@ -47,6 +47,18 @@ export async function PUT(req: NextRequest) {
       .slice(0, 366);
     data.datesJson = JSON.stringify(dates);
   }
+  if (body.devisDispo !== undefined && typeof body.devisDispo === "object" && body.devisDispo !== null) {
+    // {"2026-08-13":["10:00","17:00"], ...} — 366 jours et 28 créneaux/jour max
+    const out: Record<string, string[]> = {};
+    for (const [day, slots] of Object.entries(body.devisDispo as Record<string, unknown>).slice(0, 366)) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || !Array.isArray(slots)) continue;
+      const clean = (slots as unknown[])
+        .filter((t): t is string => typeof t === "string" && /^\d{2}:\d{2}$/.test(t))
+        .slice(0, 28);
+      if (clean.length) out[day] = Array.from(new Set(clean)).sort();
+    }
+    data.devisDispoJson = JSON.stringify(out);
+  }
   if (Array.isArray(body.devisSlots)) {
     const slots = (body.devisSlots as unknown[])
       .filter((s) => typeof s === "string" && /^\d{2}:\d{2}$/.test(s))

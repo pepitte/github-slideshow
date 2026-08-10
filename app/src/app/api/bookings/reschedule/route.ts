@@ -49,13 +49,13 @@ export async function POST(req: NextRequest) {
   const settings = await getSettings();
   let endAt: Date;
   if (booking.kind === "chantier") {
-    const chantierEnd = await checkChantier(settings, startAt, chantierDuration, booking.id);
+    const chantierEnd = await checkChantier(settings, startAt, chantierDuration, booking.id, booking.postalCode);
     if (!chantierEnd) {
       return NextResponse.json({ error: "creneau_indisponible" }, { status: 409 });
     }
     endAt = chantierEnd;
   } else {
-    if (!(await isSlotAvailable(settings, startAt, booking.id))) {
+    if (!(await isSlotAvailable(settings, startAt, booking.id, booking.postalCode))) {
       return NextResponse.json({ error: "creneau_indisponible" }, { status: 409 });
     }
     endAt = new Date(startAt.getTime() + settings.visitDurationMin * 60_000);

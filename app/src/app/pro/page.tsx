@@ -88,7 +88,7 @@ export default function ProDashboard() {
       <div className="mb-4 grid grid-cols-3 gap-2">
         <Link href="/pro/chantiers" className="card !p-3 text-center transition hover:bg-leaf-50">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-leaf-800/50">
-            Chantiers à venir
+            RDV à venir
           </p>
           <p className="text-2xl font-bold text-leaf-900">{missions.length}</p>
           <p className="text-[11px] text-leaf-800/60">
@@ -115,13 +115,23 @@ export default function ProDashboard() {
         </Link>
       </div>
 
-      {/* Prochain chantier : l'essentiel en grand */}
+      {/* Prochain RDV : l'essentiel en grand */}
       {prochain ? (
-        <section className="card mb-4 space-y-3 border-2 border-leaf-600/30">
+        <section
+          className={`card mb-4 space-y-3 border-2 ${
+            prochain.kind === "devis" ? "border-blue-600/30" : "border-leaf-600/30"
+          }`}
+        >
           <div className="flex items-center justify-between">
-            <h2 className="font-bold">Mon prochain chantier</h2>
-            <span className="rounded-full bg-green-100 px-2.5 py-0.5 text-[11px] font-semibold text-green-800">
-              Attribué à vous
+            <h2 className="font-bold">
+              {prochain.kind === "devis" ? "Ma prochaine visite devis" : "Mon prochain chantier"}
+            </h2>
+            <span
+              className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+                prochain.kind === "devis" ? "bg-blue-100 text-blue-800" : "bg-green-100 text-green-800"
+              }`}
+            >
+              {prochain.kind === "devis" ? "Visite devis" : "Attribué à vous"}
             </span>
           </div>
           <p className="text-lg font-bold text-leaf-900">
@@ -155,7 +165,9 @@ export default function ProDashboard() {
             )}
           </div>
           <button onClick={() => decline(prochain)} className="text-xs text-red-600 underline">
-            Je ne peux pas assurer ce chantier
+            {prochain.kind === "devis"
+              ? "Je ne peux pas assurer cette visite"
+              : "Je ne peux pas assurer ce chantier"}
           </button>
         </section>
       ) : (
@@ -187,13 +199,19 @@ export default function ProDashboard() {
                   {labelJour(day, ymd(new Date()))}
                 </p>
                 {miens.map((m) => (
-                  <p key={m.id} className="rounded-lg bg-green-50 px-2 py-1 font-medium text-green-900">
+                  <p
+                    key={m.id}
+                    className={`rounded-lg px-2 py-1 font-medium ${
+                      m.kind === "devis" ? "bg-blue-50 text-blue-900" : "bg-green-50 text-green-900"
+                    }`}
+                  >
+                    {m.kind === "devis" && `${heureParis(m.startAt)} · Visite devis · `}
                     {m.firstName} {m.lastName} — {m.city}
                   </p>
                 ))}
                 {autres.map((e) => (
                   <p key={e.id} className="px-2 py-0.5 text-xs text-leaf-800/50">
-                    Chantier à {e.city || "?"} — {e.proName}
+                    {e.kind === "devis" ? "Visite devis" : "Chantier"} à {e.city || "?"} — {e.proName}
                   </p>
                 ))}
               </div>

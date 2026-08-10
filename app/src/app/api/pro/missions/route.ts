@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { currentProId } from "@/lib/proAuth";
 import { getSettings } from "@/lib/settings";
-import { assignChantiers, bookingDay } from "@/lib/assign";
-import { notifyOwnerReassign, notifyProNewChantier } from "@/lib/notifications";
+import { assignChantiers, assignDevis, bookingDay } from "@/lib/assign";
+import { notifyOwnerReassign, notifyProNewChantier, notifyProNewDevis } from "@/lib/notifications";
 import { todayParis, addDaysStr, parisTimeToUtc } from "@/lib/dates";
 
 export const dynamic = "force-dynamic";
@@ -29,9 +29,10 @@ export async function GET() {
 
   const bookings = await prisma.booking.findMany({
     where: {
-      kind: "chantier",
       status: { not: "annule" },
       startAt: { gte: from },
+      // Devis : seulement ceux attribués à un pro ; chantiers : tous (équipe).
+      OR: [{ kind: "chantier" }, { kind: "devis", proId: { not: null } }],
     },
     include: { pro: { select: { id: true, name: true } } },
     orderBy: { startAt: "asc" },
@@ -42,6 +43,7 @@ export async function GET() {
     .filter((b) => b.proId === proId)
     .map((b) => ({
       id: b.id,
+      kind: b.kind,
       day: b.startAt ? bookingDay(b.startAt) : "",
       startAt: b.startAt,
       endAt: b.endAt,
@@ -60,6 +62,7 @@ export async function GET() {
     .filter((b) => b.proId && b.proId !== proId)
     .map((b) => ({
       id: b.id,
+      kind: b.kind,
       day: b.startAt ? bookingDay(b.startAt) : "",
       city: b.city,
       proName: b.pro?.name ?? "",
@@ -119,24 +122,31 @@ export async function POST(req: NextRequest) {
     where: { id: booking.id },
     data: { declinedProsJson: JSON.stringify(declined), proId: null },
   });
-  const result = await assignChantiers(
-    [{ id: booking.id, startAt: booking.startAt }],
-    booking.postalCode,
-    declined
-  );
-  const nouveau = result.parJour[0]?.pro ?? null;
+  let nouveau = null;
+  if (booking.kind === "devis") {
+    nouveau = await assignDevis({ id: booking.id, startAt: booking.startAt }, booking.postalCode, declined);
+  } else {
+    const result = await assignChantiers(
+      [{ id: booking.id, startAt: booking.startAt }],
+      booking.postalCode,
+      declined
+    );
+    nouveau = result.parJour[0]?.pro ?? null;
+  }
 
   const settings = await getSettings();
   if (nouveau) {
-    await notifyProNewChantier(nouveau, booking, [bookingDay(booking.startAt)], settings);
+    if (booking.kind === "devis") await notifyProNewDevis(nouveau, booking, settings);
+    else await notifyProNewChantier(nouveau, booking, [bookingDay(booking.startAt)], settings);
   }
   await notifyOwnerReassign(settings, booking, ancien, nouveau);
 
+  const quoi = booking.kind === "devis" ? "La visite devis" : "Le chantier";
   return NextResponse.json({
     ok: true,
     reattribue: Boolean(nouveau),
     message: nouveau
-      ? `Le chantier a été réattribué à ${nouveau.name}. Le gérant est prévenu.`
+      ? `${quoi} a été réattribué${booking.kind === "devis" ? "e" : ""} à ${nouveau.name}. Le gérant est prévenu.`
       : "Personne d'autre n'est disponible : le gérant est prévenu et reprend la main.",
   });
 }

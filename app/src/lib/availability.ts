@@ -5,7 +5,7 @@ import { prisma } from "./prisma";
 import { getBusyPeriods } from "./google";
 import { parseOpeningHours, parseChantierHours, parseDaysOff } from "./settings";
 import { parisTimeToUtc, utcToParis, addDaysStr, todayParis } from "./dates";
-import { joursAvecCapacite } from "./assign";
+import { joursAvecCapacite, creneauxDevisPros } from "./assign";
 
 export type DaySlots = { date: string; slots: string[] }; // slots = ISO UTC des débuts
 export type BookingKind = "devis" | "chantier";
@@ -47,53 +47,6 @@ async function getBusy(
 }
 
 /**
- * Couverture par les professionnels : quels jours (chantier) et quels
- * couples jour+heure (devis) sont couverts par au moins un pro disponible.
- * `active` est faux si le filtre est désactivé — ou si personne n'a encore
- * déclaré la moindre disponibilité (sinon le site ne proposerait plus rien).
- */
-type ProCoverage = {
-  active: boolean;
-  chantierDays: Set<string>;
-  devisSlots: Set<string>; // "AAAA-MM-JJ HH:mm"
-};
-
-async function getProCoverage(settings: Settings, kind: BookingKind): Promise<ProCoverage> {
-  const off: ProCoverage = { active: false, chantierDays: new Set(), devisSlots: new Set() };
-  const mode = settings.proFilterMode;
-  if (mode !== "tous" && !(mode === "chantier" && kind === "chantier")) return off;
-
-  const pros = await prisma.pro.findMany({
-    select: { status: true, datesJson: true, devisSlotsJson: true },
-  });
-  const parse = (json: string): string[] => {
-    try {
-      const arr = JSON.parse(json);
-      return Array.isArray(arr) ? arr.map(String) : [];
-    } catch {
-      return [];
-    }
-  };
-  const chantierDays = new Set<string>();
-  const devisSlots = new Set<string>();
-  let anyDeclared = false;
-
-  for (const pro of pros) {
-    const dates = parse(pro.datesJson);
-    if (dates.length) anyDeclared = true;
-    if (pro.status === "disponible_chantier") {
-      for (const d of dates) chantierDays.add(d);
-    }
-    if (pro.status === "disponible_devis") {
-      const slots = parse(pro.devisSlotsJson);
-      for (const d of dates) for (const h of slots) devisSlots.add(`${d} ${h}`);
-    }
-  }
-  if (!anyDeclared) return off; // filet de sécurité
-  return { active: true, chantierDays, devisSlots };
-}
-
-/**
  * Créneaux DEVIS : visites de fin de journée, toutes les 30 min.
  * Chaque créneau réserve [début - buffer, fin + buffer] pour le trajet.
  * `excludeBookingId` : RDV à ignorer (cas du report — son propre créneau
@@ -101,7 +54,8 @@ async function getProCoverage(settings: Settings, kind: BookingKind): Promise<Pr
  */
 export async function getAvailability(
   settings: Settings,
-  excludeBookingId?: string
+  excludeBookingId?: string,
+  clientCp?: string
 ): Promise<DaySlots[]> {
   const openingHours = parseOpeningHours(settings);
   const daysOff = parseDaysOff(settings);
@@ -114,9 +68,11 @@ export async function getAvailability(
   const startDay = todayParis();
   const rangeStart = new Date();
   const rangeEnd = parisTimeToUtc(addDaysStr(startDay, settings.maxDaysAhead), "23:59");
-  const [busy, coverage] = await Promise.all([
+  // Créneaux du gérant (horaires d'ouverture, agenda Google) ∪ créneaux déclarés
+  // par les pros (jour par jour, trous en journée compris) : option B du client.
+  const [busy, prosSlots] = await Promise.all([
     getBusy(settings, rangeStart, rangeEnd, excludeBookingId),
-    getProCoverage(settings, "devis"),
+    creneauxDevisPros(clientCp, excludeBookingId),
   ]);
 
   const minStart = new Date(Date.now() + settings.minNoticeHours * 3600_000);
@@ -125,14 +81,18 @@ export async function getAvailability(
   for (let i = 0; i <= settings.maxDaysAhead; i++) {
     const dateStr = addDaysStr(startDay, i);
     const weekday = utcToParis(parisTimeToUtc(dateStr, "12:00")).weekday;
-    const dayConfig = openingHours[String(weekday)];
-    if (!dayConfig?.enabled) continue;
+    const rawConfig = openingHours[String(weekday)];
+    const hasProSlots = (prosSlots.get(dateStr)?.size ?? 0) > 0;
+    // Jour fermé côté gérant : reste proposé si un pro a déclaré des créneaux.
+    if (!rawConfig?.enabled && !hasProSlots) continue;
     if (daysOff.some((d) => dateStr >= d.from && dateStr <= d.to)) continue;
+    const dayConfig = rawConfig?.enabled ? rawConfig : { enabled: false, start: "00:00", end: "00:00" };
 
     const dayStart = parisTimeToUtc(dateStr, dayConfig.start);
     const dayEnd = parisTimeToUtc(dateStr, dayConfig.end);
-    const slots: string[] = [];
+    const slots = new Set<string>();
 
+    // 1. Créneaux du gérant : horaires d'ouverture, moins l'agenda occupé.
     for (
       let t = dayStart.getTime();
       t + duration * 60_000 <= dayEnd.getTime();
@@ -140,19 +100,23 @@ export async function getAvailability(
     ) {
       const slotStart = new Date(t);
       if (slotStart < minStart) continue;
-      // Un professionnel doit être disponible sur ce créneau (si le filtre est actif).
-      if (coverage.active && !coverage.devisSlots.has(`${dateStr} ${utcToParis(slotStart).time}`)) {
-        continue;
-      }
       // Le créneau bloqué inclut le buffer avant/après (temps de trajet).
       const blocked: Interval = {
         start: new Date(t - buffer * 60_000),
         end: new Date(t + (duration + buffer) * 60_000),
       };
       if (busy.some((b) => overlaps(blocked, b))) continue;
-      slots.push(slotStart.toISOString());
+      slots.add(slotStart.toISOString());
     }
-    if (slots.length > 0) result.push({ date: dateStr, slots });
+
+    // 2. Créneaux déclarés par les pros ce jour-là (déjà nettoyés des visites prises).
+    for (const time of Array.from(prosSlots.get(dateStr) ?? [])) {
+      const slotStart = parisTimeToUtc(dateStr, time);
+      if (slotStart < minStart) continue;
+      slots.add(slotStart.toISOString());
+    }
+
+    if (slots.size > 0) result.push({ date: dateStr, slots: Array.from(slots).sort() });
   }
   return result;
 }
@@ -161,9 +125,10 @@ export async function getAvailability(
 export async function isSlotAvailable(
   settings: Settings,
   startAt: Date,
-  excludeBookingId?: string
+  excludeBookingId?: string,
+  clientCp?: string
 ): Promise<boolean> {
-  const days = await getAvailability(settings, excludeBookingId);
+  const days = await getAvailability(settings, excludeBookingId, clientCp);
   const iso = startAt.toISOString();
   return days.some((d) => d.slots.includes(iso));
 }

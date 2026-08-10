@@ -25,9 +25,10 @@ export const PRO_STATUS_META: Record<
   },
 };
 
+// « sous confirmation » a été retiré des choix (friction inutile — décision du
+// client) ; PRO_STATUS_META le garde pour afficher les anciens comptes.
 export const PRO_STATUS_ORDER = [
   "disponible_devis",
   "disponible_chantier",
-  "sous_confirmation",
   "indisponible",
 ];

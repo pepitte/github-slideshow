@@ -19,6 +19,25 @@ export type Candidate = {
   raison: string;
 };
 
+/** {"2026-08-13":["10:00","17:00"], ...} — créneaux devis par jour d'un pro. */
+export function parseDispo(json: string): Record<string, string[]> {
+  try {
+    const obj = JSON.parse(json);
+    if (!obj || typeof obj !== "object" || Array.isArray(obj)) return {};
+    const out: Record<string, string[]> = {};
+    for (const [day, slots] of Object.entries(obj)) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || !Array.isArray(slots)) continue;
+      const clean = (slots as unknown[]).filter(
+        (t): t is string => typeof t === "string" && /^\d{2}:\d{2}$/.test(t)
+      );
+      if (clean.length) out[day] = Array.from(new Set(clean)).sort();
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
 function parseDates(json: string): string[] {
   try {
     const arr = JSON.parse(json);
@@ -150,7 +169,8 @@ export type AssignResult = {
 export async function assignChantiers(
   bookings: { id: string; startAt: Date }[],
   clientCp: string,
-  exclude: string[] = []
+  exclude: string[] = [],
+  preferProId?: string | null
 ): Promise<AssignResult> {
   const days = bookings.map((b) => bookingDay(b.startAt));
   const [pros, busy, charge] = await Promise.all([
@@ -171,7 +191,9 @@ export async function assignChantiers(
 
   const result: AssignResult = { parJour: [] };
   if (communs.length > 0) {
-    const pro = communs[0].pro;
+    // Le pro qui a fait la visite devis du client passe devant, s'il est éligible.
+    const prefere = preferProId ? communs.find((c) => c.pro.id === preferProId) : undefined;
+    const pro = (prefere ?? communs[0]).pro;
     for (let i = 0; i < bookings.length; i++) {
       result.parJour.push({ bookingId: bookings[i].id, day: days[i], pro });
     }
@@ -189,6 +211,119 @@ export async function assignChantiers(
     });
   }
   return result;
+}
+
+// ---------------------------------------------------------------------------
+// Visites devis : mêmes principes que les chantiers, à la demi-heure près.
+// Un créneau déclaré par un pro est réservable tant qu'il n'a pas déjà une
+// visite devis qui chevauche ce créneau (30 min par visite).
+// ---------------------------------------------------------------------------
+
+export async function prosDevis(): Promise<(Pro & { dispo: Record<string, string[]> })[]> {
+  const pros = await prisma.pro.findMany({ where: { status: "disponible_devis" } });
+  return pros.map((p) => Object.assign(p, { dispo: parseDispo(p.devisDispoJson) }));
+}
+
+/** Visites devis déjà attribuées, par pro : Set de « AAAA-MM-JJ HH:mm ». */
+async function devisPrisParPro(excludeBookingId?: string): Promise<Map<string, Set<string>>> {
+  const rows = await prisma.booking.findMany({
+    where: {
+      kind: "devis",
+      status: { not: "annule" },
+      proId: { not: null },
+      startAt: { gte: new Date() },
+      ...(excludeBookingId ? { id: { not: excludeBookingId } } : {}),
+    },
+    select: { proId: true, startAt: true },
+  });
+  const map = new Map<string, Set<string>>();
+  for (const r of rows) {
+    if (!r.proId || !r.startAt) continue;
+    const paris = utcToParis(r.startAt);
+    if (!map.has(r.proId)) map.set(r.proId, new Set());
+    map.get(r.proId)!.add(`${paris.date} ${paris.time}`);
+  }
+  return map;
+}
+
+/**
+ * Créneaux devis déclarés par les pros et encore libres, jour par jour.
+ * Si `clientCp` est fourni, seuls les pros à portée comptent.
+ */
+export async function creneauxDevisPros(
+  clientCp?: string,
+  excludeBookingId?: string
+): Promise<Map<string, Set<string>>> {
+  const [pros, pris] = await Promise.all([prosDevis(), devisPrisParPro(excludeBookingId)]);
+  const clientPos = clientCp ? cpToLatLng(clientCp) : null;
+  const out = new Map<string, Set<string>>();
+  for (const pro of pros) {
+    if (clientPos) {
+      const proPos = cpToLatLng(pro.basePostalCode);
+      if (proPos && distanceKm(clientPos, proPos) > pro.radiusKm) continue;
+    }
+    for (const [day, slots] of Object.entries(pro.dispo)) {
+      for (const t of slots) {
+        if (pris.get(pro.id)?.has(`${day} ${t}`)) continue;
+        if (!out.has(day)) out.set(day, new Set());
+        out.get(day)!.add(t);
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * Attribue une visite devis au pro le plus proche ayant déclaré ce créneau
+ * (et encore libre). Renvoie le pro, ou null (visite du gérant / à attribuer).
+ */
+export async function assignDevis(
+  booking: { id: string; startAt: Date },
+  clientCp: string,
+  exclude: string[] = []
+): Promise<Pro | null> {
+  const paris = utcToParis(booking.startAt);
+  const cle = `${paris.date} ${paris.time}`;
+  const [pros, pris] = await Promise.all([prosDevis(), devisPrisParPro(booking.id)]);
+  const clientPos = cpToLatLng(clientCp);
+
+  const candidats = pros
+    .filter((p) => !exclude.includes(p.id))
+    .filter((p) => (p.dispo[paris.date] ?? []).includes(paris.time))
+    .filter((p) => !pris.get(p.id)?.has(cle))
+    .map((p) => {
+      const pos = cpToLatLng(p.basePostalCode);
+      const distance = clientPos && pos ? distanceKm(clientPos, pos) : null;
+      return { pro: p, distance };
+    })
+    .filter((c) => c.distance === null || c.distance <= c.pro.radiusKm)
+    .sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
+
+  const pro = candidats[0]?.pro ?? null;
+  await prisma.booking.update({ where: { id: booking.id }, data: { proId: pro?.id ?? null } });
+  return pro;
+}
+
+/**
+ * Le pro qui a fait la visite devis de ce client (téléphone ou email) :
+ * c'est lui qui doit faire le chantier si possible.
+ */
+export async function proDeLaVisite(email: string, phone: string): Promise<string | null> {
+  if (!email && !phone) return null;
+  const visite = await prisma.booking.findFirst({
+    where: {
+      kind: "devis",
+      status: { not: "annule" },
+      proId: { not: null },
+      OR: [
+        ...(email ? [{ email }] : []),
+        ...(phone ? [{ phone }] : []),
+      ],
+    },
+    orderBy: { createdAt: "desc" },
+    select: { proId: true },
+  });
+  return visite?.proId ?? null;
 }
 
 /**

@@ -9,8 +9,13 @@ import {
   type ChantierDuration,
 } from "@/lib/availability";
 import { createCalendarEvent } from "@/lib/google";
-import { sendConfirmation, notifyOwnerNewBooking, notifyProNewChantier } from "@/lib/notifications";
-import { assignChantiers } from "@/lib/assign";
+import {
+  sendConfirmation,
+  notifyOwnerNewBooking,
+  notifyProNewChantier,
+  notifyProNewDevis,
+} from "@/lib/notifications";
+import { assignChantiers, assignDevis, proDeLaVisite } from "@/lib/assign";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -132,9 +137,12 @@ export async function POST(req: NextRequest) {
     }
 
     // Attribution automatique au pro disponible le plus proche (un chantier/jour/pro).
+    // Le pro qui a fait la visite devis de ce client est prioritaire.
     const attribution = await assignChantiers(
       [primary, ...siblings].map((b) => ({ id: b.id, startAt: b.startAt! })),
-      postalCode
+      postalCode,
+      [],
+      await proDeLaVisite(email, phone)
     );
     // Prévenir chaque pro attribué (une seule fois, avec tous ses jours)
     const parPro = new Map<string, { pro: (typeof attribution.parJour)[0]["pro"]; days: string[] }>();
@@ -159,7 +167,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ id: primary.id }, { status: 201 });
   }
 
-  if (!(await isSlotAvailable(settings, startAt))) {
+  if (!(await isSlotAvailable(settings, startAt, undefined, postalCode))) {
     return NextResponse.json({ error: "creneau_indisponible" }, { status: 409 });
   }
   const endAt = new Date(startAt.getTime() + settings.visitDurationMin * 60_000);
@@ -179,10 +187,15 @@ export async function POST(req: NextRequest) {
     await prisma.booking.update({ where: { id: booking.id }, data: { googleEventId } });
   }
 
-  // 4. SMS de confirmation immédiat + email avec .ics — sans action du gérant.
+  // 4. Attribution de la visite : le pro le plus proche ayant déclaré ce créneau ;
+  //    sinon null = visite du gérant (créneau de ses horaires d'ouverture).
+  const proVisite = await assignDevis({ id: booking.id, startAt }, postalCode);
+  if (proVisite) await notifyProNewDevis(proVisite, booking, settings);
+
+  // 5. SMS de confirmation immédiat + email avec .ics — sans action du gérant.
   await sendConfirmation(booking, settings);
-  // 5. Alerte au gérant : plus besoin d'ouvrir le tableau de bord.
-  await notifyOwnerNewBooking(booking, settings);
+  // 6. Alerte au gérant : plus besoin d'ouvrir le tableau de bord.
+  await notifyOwnerNewBooking(booking, settings, undefined, proVisite ? proVisite.name : undefined);
 
   return NextResponse.json({ id: booking.id }, { status: 201 });
 }
