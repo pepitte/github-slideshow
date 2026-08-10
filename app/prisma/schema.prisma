@@ -153,7 +153,11 @@ model Pro {
   // Dates disponibles : ["2026-08-12","2026-08-13",...]
   datesJson      String   @default("[]")
   // Créneaux devis validés (fin de journée, pas de 30 min) : ["18:00","18:30",...]
+  // (ancien format global — conservé pour compatibilité, plus utilisé par l'UI)
   devisSlotsJson String   @default("[]")
+  // Créneaux devis PAR JOUR : {"2026-08-13":["10:00","10:30","17:00"], ...}
+  // C'est ce planning qui alimente les créneaux proposés aux clients (option B).
+  devisDispoJson String   @default("{}")
   note           String   @default("")
   // Réinitialisation de mot de passe (lien email valable 1 h)
   resetToken     String   @default("")

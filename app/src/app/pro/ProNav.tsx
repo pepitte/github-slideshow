@@ -42,7 +42,7 @@ const ICONS: Record<string, JSX.Element> = {
 
 const LINKS = [
   { href: "/pro", label: "Tableau de bord", icon: "dashboard" },
-  { href: "/pro/chantiers", label: "Mes chantiers", icon: "chantiers" },
+  { href: "/pro/chantiers", label: "Chantiers & visites", icon: "chantiers" },
   { href: "/pro/pointage", label: "Pointage", icon: "pointage" },
   { href: "/pro/disponibilites", label: "Disponibilités", icon: "dispos" },
 ];

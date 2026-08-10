@@ -23,13 +23,18 @@ export async function GET(req: NextRequest) {
       kind = booking.kind === "chantier" ? "chantier" : "devis";
     }
   }
+  // ?cp= : ne proposer que les créneaux couverts par un pro à portée du client.
+  const cpParam = req.nextUrl.searchParams.get("cp") ?? "";
+  let cp = /^\d{5}$/.test(cpParam) ? cpParam : undefined;
+  if (!cp && excludeId) {
+    // Report d'un RDV existant : on connaît le code postal du client.
+    const b = await prisma.booking.findUnique({ where: { id: excludeId }, select: { postalCode: true } });
+    if (b && /^\d{5}$/.test(b.postalCode)) cp = b.postalCode;
+  }
   if (kind === "chantier") {
-    // ?cp= : ne proposer que les jours couverts par un pro à portée du client.
-    const cpParam = req.nextUrl.searchParams.get("cp") ?? "";
-    const cp = /^\d{5}$/.test(cpParam) ? cpParam : undefined;
     const days = await getChantierAvailability(settings, excludeId, cp);
     return NextResponse.json({ kind, days });
   }
-  const days = await getAvailability(settings, excludeId);
+  const days = await getAvailability(settings, excludeId, cp);
   return NextResponse.json({ kind, days });
 }

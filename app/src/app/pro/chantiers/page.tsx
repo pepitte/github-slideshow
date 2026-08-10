@@ -61,9 +61,9 @@ export default function ProChantiersPage() {
     <main className="mx-auto max-w-3xl px-4 py-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h1 className="text-xl font-bold">Mes chantiers</h1>
+          <h1 className="text-xl font-bold">Mes chantiers &amp; visites</h1>
           <p className="text-sm text-leaf-800/60">
-            En vert : les vôtres. En gris : l&apos;activité de l&apos;équipe.
+            En vert : vos chantiers. En bleu : vos visites devis. En gris : l&apos;équipe.
           </p>
         </div>
         <button
@@ -98,46 +98,58 @@ export default function ProChantiersPage() {
                 <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-leaf-800/50">
                   {labelJour(day, ymd(new Date()))}
                 </p>
-                {miens.map((m) => (
-                  <div
-                    key={m.id}
-                    className="mb-1 rounded-xl border border-green-200 bg-green-50 px-3 py-2 text-sm"
-                  >
-                    <p className="font-semibold text-green-900">
-                      {heureParis(m.startAt)} – {heureParis(m.endAt)} · {m.firstName} {m.lastName}
-                    </p>
-                    <p className="text-green-800/80">
-                      {m.address}, {m.city} · {PROJET_LABELS[m.projectType] ?? m.projectType}
-                    </p>
-                    {m.description && (
-                      <p className="mt-1 rounded-lg bg-white/60 p-2 text-xs text-green-900/80">{m.description}</p>
-                    )}
-                    <div className="mt-1 flex gap-3 text-xs font-semibold">
-                      <a
-                        className="text-green-900 underline"
-                        href={itineraireUrl(m)}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        Itinéraire
-                      </a>
-                      {m.phone && (
-                        <a className="text-green-900 underline" href={`tel:${m.phone}`}>
-                          {m.phone}
-                        </a>
+                {miens.map((m) => {
+                  const devis = m.kind === "devis";
+                  const texte = devis ? "text-blue-900" : "text-green-900";
+                  return (
+                    <div
+                      key={m.id}
+                      className={`mb-1 rounded-xl border px-3 py-2 text-sm ${
+                        devis ? "border-blue-200 bg-blue-50" : "border-green-200 bg-green-50"
+                      }`}
+                    >
+                      <p className={`font-semibold ${texte}`}>
+                        {heureParis(m.startAt)} – {heureParis(m.endAt)} · {m.firstName} {m.lastName}
+                        {devis && (
+                          <span className="ml-2 rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-bold text-white">
+                            Visite devis
+                          </span>
+                        )}
+                      </p>
+                      <p className={devis ? "text-blue-800/80" : "text-green-800/80"}>
+                        {m.address}, {m.city} · {PROJET_LABELS[m.projectType] ?? m.projectType}
+                      </p>
+                      {m.description && (
+                        <p
+                          className={`mt-1 rounded-lg bg-white/60 p-2 text-xs ${
+                            devis ? "text-blue-900/80" : "text-green-900/80"
+                          }`}
+                        >
+                          {m.description}
+                        </p>
                       )}
-                      <button onClick={() => decline(m)} className="text-red-600 underline">
-                        Je ne peux pas
-                      </button>
+                      <div className="mt-1 flex gap-3 text-xs font-semibold">
+                        <a className={`${texte} underline`} href={itineraireUrl(m)} target="_blank" rel="noreferrer">
+                          Itinéraire
+                        </a>
+                        {m.phone && (
+                          <a className={`${texte} underline`} href={`tel:${m.phone}`}>
+                            {m.phone}
+                          </a>
+                        )}
+                        <button onClick={() => decline(m)} className="text-red-600 underline">
+                          Je ne peux pas
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
                 {autres.map((e) => (
                   <div
                     key={e.id}
                     className="mb-1 rounded-xl bg-sand-50 px-3 py-1.5 text-xs text-leaf-800/60"
                   >
-                    Chantier à {e.city || "?"} — {e.proName}
+                    {e.kind === "devis" ? "Visite devis" : "Chantier"} à {e.city || "?"} — {e.proName}
                   </div>
                 ))}
               </div>

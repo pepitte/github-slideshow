@@ -2,6 +2,7 @@
 
 export type Mission = {
   id: string;
+  kind: string; // "devis" (visite de 30 min) ou "chantier" (journée)
   day: string;
   startAt: string;
   endAt: string;
@@ -15,7 +16,7 @@ export type Mission = {
   description: string;
 };
 
-export type EquipeJour = { id: string; day: string; city: string; proName: string };
+export type EquipeJour = { id: string; kind: string; day: string; city: string; proName: string };
 
 export const PROJET_LABELS: Record<string, string> = {
   entretien: "Entretien de jardin",
@@ -57,7 +58,8 @@ export function itineraireUrl(m: Mission): string {
 
 /** Message de confirmation avant désistement. */
 export function confirmDecline(m: Mission, today: string): boolean {
+  const devis = m.kind === "devis";
   return window.confirm(
-    `Vous ne pouvez pas assurer le chantier du ${labelJour(m.day, today).toLowerCase()} ?\nIl sera proposé à un autre professionnel et le gérant sera prévenu.`
+    `Vous ne pouvez pas assurer ${devis ? "la visite devis" : "le chantier"} du ${labelJour(m.day, today).toLowerCase()} ?\n${devis ? "Elle sera proposée" : "Il sera proposé"} à un autre professionnel et le gérant sera prévenu.`
   );
 }

@@ -150,6 +150,44 @@ export async function notifyProNewChantier(
 }
 
 /**
+ * Prévient un professionnel qu'une visite devis vient de lui être attribuée.
+ */
+export async function notifyProNewDevis(
+  pro: Pro,
+  booking: Booking,
+  settings: Settings
+): Promise<void> {
+  if (!pro.email || !booking.startAt) return;
+  const client = `${booking.firstName} ${booking.lastName}`.trim();
+  const lieu = [booking.address, `${booking.postalCode} ${booking.city}`.trim()]
+    .filter(Boolean)
+    .join(", ");
+  const quand = `${formatDateFr(booking.startAt)} à ${formatTimeFr(booking.startAt)}`;
+  await sendEmail({
+    to: pro.email,
+    subject: `Nouvelle visite devis : ${quand} — ${booking.city || booking.postalCode}`,
+    text: [
+      `Bonjour ${pro.name},`,
+      ``,
+      `Une visite devis vient de vous être attribuée :`,
+      ``,
+      `Quand      : ${quand} (30 minutes)`,
+      `Client     : ${client}`,
+      `Adresse    : ${lieu}`,
+      booking.description ? `Projet     : ${booking.description}` : "",
+      ``,
+      `Retrouvez le téléphone du client et l'itinéraire dans votre espace professionnel.`,
+      `Si le devis est accepté, le chantier vous sera proposé en priorité.`,
+      `Un empêchement ? Bouton « Je ne peux pas » dans votre espace.`,
+      ``,
+      settings.companyName,
+    ]
+      .filter(Boolean)
+      .join("\n"),
+  });
+}
+
+/**
  * Prévient le gérant qu'un chantier a changé de mains (désistement) ou reste
  * sans professionnel.
  */
@@ -165,15 +203,17 @@ export async function notifyOwnerReassign(
   await sendEmail({
     to,
     subject: nouveau
-      ? `Chantier réattribué : ${quand}`
-      : `Chantier SANS professionnel : ${quand}`,
+      ? `${booking.kind === "devis" ? "Visite devis réattribuée" : "Chantier réattribué"} : ${quand}`
+      : `${booking.kind === "devis" ? "Visite devis SANS professionnel" : "Chantier SANS professionnel"} : ${quand}`,
     text: [
-      `${ancien.name} s'est désisté du chantier du ${quand}`,
+      `${ancien.name} s'est désisté ${booking.kind === "devis" ? "de la visite devis" : "du chantier"} du ${quand}`,
       `(${booking.address}, ${booking.postalCode} ${booking.city}).`,
       ``,
       nouveau
-        ? `Le chantier a été réattribué automatiquement à ${nouveau.name}.`
-        : `Aucun autre professionnel disponible : le chantier est À ATTRIBUER depuis votre tableau de bord.`,
+        ? `Réattribution automatique à ${nouveau.name}.`
+        : booking.kind === "devis"
+          ? `Aucun autre professionnel disponible : la visite reste à votre charge ou à réattribuer depuis le tableau de bord.`
+          : `Aucun autre professionnel disponible : le chantier est À ATTRIBUER depuis votre tableau de bord.`,
     ].join("\n"),
   });
 }
