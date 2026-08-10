@@ -26,6 +26,17 @@ Branche de travail : `claude/landscaping-booking-platform-ejx6ap`.
   enregistre puis tente un vrai envoi et affiche le diagnostic en français
   (destinataire manquant / clé absente avec la liste des variables `resend` vues
   par le serveur et leur longueur / motif de refus Resend traduit).
+- **Emails aux clients (10 août)** : section dédiée dans les paramètres.
+  L'expéditeur est réglable depuis l'admin (`Settings.emailFrom`, repli sur
+  `EMAIL_FROM` puis sur l'adresse d'essai Resend) — plus besoin de toucher aux
+  variables Vercel pour passer au domaine vérifié. L'écran affiche lequel des
+  trois états s'applique (`emailConfigured` / `emailClientsOk` renvoyés par
+  `GET /api/admin/settings`). `POST /api/admin/test-email` accepte `{ to }` :
+  écrire au propriétaire du compte Resend réussit **toujours**, seul un envoi
+  vers une autre adresse prouve que les clients reçoivent quelque chose.
+  `sendConfirmation()` renvoie `{ emailOk, emailError }` et
+  `notifyOwnerNewBooking()` avertit le gérant quand la confirmation du client
+  n'est pas partie (il rappelle le client au lieu de le laisser sans nouvelle).
 - **Anti double-booking** : Google Calendar OAuth (freeBusy en direct) + RDV
   en BDD + revérification du créneau à la soumission. Buffer trajet paramétrable.
 - **Créneaux devis des pros réservables (option B, 10 août)** : chaque pro
@@ -62,6 +73,13 @@ Branche de travail : `claude/landscaping-booking-platform-ejx6ap`.
 - **Espace admin** (`/admin`) : dashboard RDV avec statuts (à faire / devis
   envoyé / gagné / perdu / annulé), paramètres (horaires, congés, zone, durées,
   textes SMS/email, logo, photos de réalisations), connexion Google en 1 clic.
+  **Chargement allégé (10 août)** : `GET /api/admin/bookings` ne renvoie plus
+  les photos (base64, très lourdes) mais leur nombre (`photosCount`) ; les
+  images arrivent à l'ouverture d'une fiche via `GET /api/admin/bookings/:id`.
+  La fenêtre est calculée côté serveur (RDV à venir + devis sans date par
+  défaut, `?past=1` pour l'historique, plafond 200 + bandeau si tronqué) et la
+  **recherche est serveur** (`?q=`, donc tout l'historique, contre la seule
+  liste chargée auparavant). Mesuré sur 250 RDV / 252 photos : 43,4 Mo → 81 Ko.
 - **Meta Pixel** : PageView / Lead / Schedule. Identifiant réglable depuis
   l'admin (`Settings.metaPixelId`, transmis par le layout au composant
   MetaPixel ; variable d'env en repli). Pixel + bannière RGPD masqués sur
@@ -292,6 +310,16 @@ client) : navigation intégrée comme le vrai site — « Se connecter » en hau
   **vide** — le bouton de test le dit maintenant explicitement (« 0 caractères »).
   Rappel : sans domaine vérifié, Resend n'écrit qu'à l'adresse propriétaire du
   compte, donc **les emails de confirmation aux clients ne partent pas encore**.
+  Côté code tout est prêt (voir « Emails aux clients ») : il reste à vérifier
+  `arborispaysage.eu` dans Resend (enregistrements DNS à ajouter chez OVH) puis
+  à saisir l'expéditeur dans les paramètres — aucune intervention de dev.
+- **Rappels SMS bancals** (constaté le 10 août, non corrigé — arbitrage client) :
+  `/api/cron/reminders` est écrit pour tourner toutes les 10-15 min, or le plan
+  Hobby de Vercel ne permet qu'un passage par jour (6h UTC = 8h Paris). Donc le
+  rappel « 1 h avant » ne part JAMAIS pour les visites de fin de journée, et le
+  rappel « 24 h » (texte par défaut : « a lieu **demain** ») part en réalité le
+  matin même. Correctif proposé : un cron externe gratuit (cron-job.org) qui
+  appelle l'URL toutes les 15 min (`?secret=` accepté), sinon adapter les textes.
 - Clés API restant à fournir : Google (OAuth + Places), Twilio, Meta Pixel ID.
 - Nom de domaine personnalisé (l'icône PWA affichera alors le vrai domaine).
 - Validation serveur email/téléphone sur `/api/bookings` (le formulaire bloque
