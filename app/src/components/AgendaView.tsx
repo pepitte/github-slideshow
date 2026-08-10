@@ -34,7 +34,10 @@ type View = "mois" | "semaine" | "jour";
 // Grille horaire : 7h00 → 20h00 (les chantiers démarrent à 8h, les devis finissent à 20h)
 const HOUR_START = 7;
 const HOUR_END = 20;
-const HOUR_PX = 48;
+// Hauteur d'une heure : assez haute pour qu'une visite de 30 min reste lisible.
+const HOUR_PX = 56;
+// En dessous, le bloc ne peut pas contenir deux lignes de texte.
+const DEUX_LIGNES_PX = 34;
 
 function pad(n: number): string {
   return String(n).padStart(2, "0");
@@ -203,17 +206,34 @@ export default function AgendaView({
     return out;
   }, [view, refDate]);
 
-  /** Blocs positionnés d'une journée, avec gestion des chevauchements (colonnes). */
+  /**
+   * Blocs positionnés d'une journée. Les RDV qui se chevauchent se partagent la
+   * largeur, mais SEULEMENT entre eux (`cols` par groupe) : un chevauchement à
+   * 17h ne doit pas rétrécir de moitié le RDV isolé de 10h.
+   */
   function dayEvents(day: string) {
     const evts = (bookingsByDay[day] ?? [])
       .map((b) => {
         const start = Math.max(parisMin(b.startAt), HOUR_START * 60);
         const end = Math.min(Math.max(parisMin(b.endAt), start + 30), HOUR_END * 60);
-        return { b, start, end, lane: 0 };
+        return { b, start, end, lane: 0, cols: 1 };
       })
       .sort((a, x) => a.start - x.start);
+
     const lanes: number[] = [];
+    let groupe: typeof evts = [];
+    let finGroupe = -1;
+    const cloturer = () => {
+      const cols = Math.max(lanes.length, 1);
+      for (const e of groupe) e.cols = cols;
+      groupe = [];
+      lanes.length = 0;
+      finGroupe = -1;
+    };
+
     for (const e of evts) {
+      // Plus aucun chevauchement avec le groupe en cours → on le referme.
+      if (groupe.length && e.start >= finGroupe) cloturer();
       let lane = lanes.findIndex((endMin) => endMin <= e.start);
       if (lane === -1) {
         lane = lanes.length;
@@ -221,8 +241,11 @@ export default function AgendaView({
       }
       lanes[lane] = e.end;
       e.lane = lane;
+      groupe.push(e);
+      finGroupe = Math.max(finGroupe, e.end);
     }
-    return { evts, laneCount: Math.max(lanes.length, 1) };
+    if (groupe.length) cloturer();
+    return evts;
   }
 
   const dayBookings = selected ? bookingsByDay[selected] ?? [] : [];
@@ -266,7 +289,9 @@ export default function AgendaView({
   function timeGrid(gridDays: string[]) {
     return (
       <div className="overflow-x-auto rounded-2xl border border-leaf-100 bg-white">
-        <div className={gridDays.length > 1 ? "min-w-[680px]" : ""}>
+        {/* Colonnes assez larges pour lire « 10h00 Prénom Nom » dans un bloc,
+            sans pousser la semaine hors de l'écran. */}
+        <div className={gridDays.length > 1 ? "min-w-[700px]" : ""}>
           <div
             className="grid"
             style={{ gridTemplateColumns: `3rem repeat(${gridDays.length}, minmax(0, 1fr))` }}
@@ -288,7 +313,7 @@ export default function AgendaView({
             </div>
 
             {gridDays.map((day) => {
-              const { evts, laneCount } = dayEvents(day);
+              const evts = dayEvents(day);
               return (
                 <div
                   key={day}
@@ -303,28 +328,53 @@ export default function AgendaView({
                     />
                   ))}
                   {day === todayKey && <span className="absolute inset-0 bg-leaf-50/40" />}
-                  {evts.map(({ b, start, end, lane }) => {
-                    const width = 100 / laneCount;
+                  {evts.map(({ b, start, end, lane, cols }) => {
+                    const width = 100 / cols;
+                    const hauteur = ((end - start) / 60) * HOUR_PX - 2;
+                    // Une visite de 30 min est trop courte pour deux lignes :
+                    // on met alors l'heure et le nom sur la même ligne. Et si
+                    // le bloc partage en plus sa largeur (chevauchement), on
+                    // garde la seule heure — un nom tronqué à « 17h3… » ne sert
+                    // à rien, le détail complet est au clic sur la journée.
+                    const compact = hauteur < DEUX_LIGNES_PX;
+                    // Étroit = vue semaine (7 colonnes) ET largeur partagée.
+                    // En vue Jour la colonne est large : on garde le nom.
+                    const etroit = compact && cols > 1 && gridDays.length > 1;
+                    const plage = `${parisTime(b.startAt)} – ${parisTime(b.endAt)}`;
                     return (
                       <button
                         key={b.id}
                         onClick={() => setSelected(day)}
-                        className={`absolute overflow-hidden rounded-lg px-1.5 py-1 text-left text-[11px] font-semibold leading-tight text-white shadow-sm ${
-                          b.kind === "chantier" ? "bg-green-500" : "bg-blue-500"
-                        }`}
+                        title={`${plage} · ${b.firstName} ${b.lastName}`}
+                        className={`absolute overflow-hidden rounded-lg text-left font-semibold leading-tight text-white shadow-sm ${
+                          etroit
+                            ? "px-1 py-0.5 text-[10px]"
+                            : compact
+                              ? "px-1.5 py-0.5 text-[11px]"
+                              : "px-1.5 py-1 text-[11px]"
+                        } ${b.kind === "chantier" ? "bg-green-500" : "bg-blue-500"}`}
                         style={{
                           top: ((start - HOUR_START * 60) / 60) * HOUR_PX + 1,
-                          height: ((end - start) / 60) * HOUR_PX - 2,
+                          height: hauteur,
                           left: `calc(${lane * width}% + 2px)`,
                           width: `calc(${width}% - 4px)`,
                         }}
                       >
-                        <span className="block truncate">
-                          {b.firstName} {b.lastName}
-                        </span>
-                        <span className="block font-normal opacity-90">
-                          {parisTime(b.startAt)} – {parisTime(b.endAt)}
-                        </span>
+                        {etroit ? (
+                          <span className="block truncate">{parisTime(b.startAt)}</span>
+                        ) : compact ? (
+                          <span className="block truncate">
+                            <span className="font-normal opacity-90">{parisTime(b.startAt)}</span>{" "}
+                            {b.firstName} {b.lastName}
+                          </span>
+                        ) : (
+                          <>
+                            <span className="block truncate">
+                              {b.firstName} {b.lastName}
+                            </span>
+                            <span className="block truncate font-normal opacity-90">{plage}</span>
+                          </>
+                        )}
                       </button>
                     );
                   })}
