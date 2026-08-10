@@ -9,7 +9,8 @@ import {
   type ChantierDuration,
 } from "@/lib/availability";
 import { createCalendarEvent } from "@/lib/google";
-import { sendConfirmation, notifyOwnerNewBooking } from "@/lib/notifications";
+import { sendConfirmation, notifyOwnerNewBooking, notifyProNewChantier } from "@/lib/notifications";
+import { assignChantiers } from "@/lib/assign";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -97,7 +98,7 @@ export async function POST(req: NextRequest) {
     const formula = days.length > 1 ? "journee" : chantierDuration;
     const ends: Date[] = [];
     for (const day of days) {
-      const end = await checkChantier(settings, day, formula);
+      const end = await checkChantier(settings, day, formula, undefined, postalCode);
       if (!end) {
         return NextResponse.json({ error: "creneau_indisponible" }, { status: 409 });
       }
@@ -130,9 +131,31 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Attribution automatique au pro disponible le plus proche (un chantier/jour/pro).
+    const attribution = await assignChantiers(
+      [primary, ...siblings].map((b) => ({ id: b.id, startAt: b.startAt! })),
+      postalCode
+    );
+    // Prévenir chaque pro attribué (une seule fois, avec tous ses jours)
+    const parPro = new Map<string, { pro: (typeof attribution.parJour)[0]["pro"]; days: string[] }>();
+    for (const r of attribution.parJour) {
+      if (!r.pro) continue;
+      if (!parPro.has(r.pro.id)) parPro.set(r.pro.id, { pro: r.pro, days: [] });
+      parPro.get(r.pro.id)!.days.push(r.day);
+    }
+    for (const { pro, days: joursPro } of Array.from(parPro.values())) {
+      if (pro) await notifyProNewChantier(pro, primary, joursPro, settings);
+    }
+    const nonAttribues = attribution.parJour.filter((r) => !r.pro).length;
+    const proLabel =
+      nonAttribues === attribution.parJour.length
+        ? "À ATTRIBUER — aucun professionnel disponible à portée"
+        : Array.from(new Set(attribution.parJour.filter((r) => r.pro).map((r) => r.pro!.name))).join(", ") +
+          (nonAttribues ? ` (+ ${nonAttribues} jour(s) à attribuer)` : "");
+
     // SMS + email de confirmation (dates groupées si plusieurs jours) + alerte gérant
     await sendConfirmation(primary, settings, days);
-    await notifyOwnerNewBooking(primary, settings, days);
+    await notifyOwnerNewBooking(primary, settings, days, proLabel);
     return NextResponse.json({ id: primary.id }, { status: 201 });
   }
 

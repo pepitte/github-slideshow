@@ -36,6 +36,16 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if (status === "annule") data.cancelledAt = new Date();
   }
 
+  if (body.proId !== undefined) {
+    const proId = String(body.proId ?? "");
+    if (proId) {
+      const pro = await prisma.pro.findUnique({ where: { id: proId } });
+      if (!pro) return NextResponse.json({ error: "Professionnel introuvable" }, { status: 400 });
+      data.proId = proId;
+    } else {
+      data.proId = null;
+    }
+  }
   if (body.description !== undefined) {
     data.description = String(body.description ?? "").slice(0, 5000);
   }

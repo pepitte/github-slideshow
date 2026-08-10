@@ -5,6 +5,7 @@ import { prisma } from "./prisma";
 import { getBusyPeriods } from "./google";
 import { parseOpeningHours, parseChantierHours, parseDaysOff } from "./settings";
 import { parisTimeToUtc, utcToParis, addDaysStr, todayParis } from "./dates";
+import { joursAvecCapacite } from "./assign";
 
 export type DaySlots = { date: string; slots: string[] }; // slots = ISO UTC des débuts
 export type BookingKind = "devis" | "chantier";
@@ -174,7 +175,8 @@ export async function isSlotAvailable(
  */
 export async function getChantierAvailability(
   settings: Settings,
-  excludeBookingId?: string
+  excludeBookingId?: string,
+  clientCp?: string
 ): Promise<ChantierDay[]> {
   const hours = parseChantierHours(settings);
   const daysOff = parseDaysOff(settings);
@@ -183,10 +185,14 @@ export async function getChantierAvailability(
   const startDay = todayParis();
   const rangeStart = new Date();
   const rangeEnd = parisTimeToUtc(addDaysStr(startDay, settings.maxDaysAhead), "23:59");
-  const [busy, coverage] = await Promise.all([
-    getBusy(settings, rangeStart, rangeEnd, excludeBookingId),
-    getProCoverage(settings, "chantier"),
-  ]);
+
+  // Mode équipe : les chantiers sont attribués aux pros, la capacité d'un jour
+  // = « au moins un pro à portée encore libre » (un chantier/jour/pro). L'agenda
+  // Google du gérant ne compte plus. Filet de sécurité : si aucun pro n'a rempli
+  // son planning, on retombe sur le mode historique (un chantier/jour, agenda gérant).
+  const capacite = await joursAvecCapacite(clientCp, excludeBookingId);
+
+  const busy = capacite.actif ? [] : await getBusy(settings, rangeStart, rangeEnd, excludeBookingId);
 
   const minStart = new Date(Date.now() + settings.minNoticeHours * 3600_000);
   const result: ChantierDay[] = [];
@@ -197,8 +203,7 @@ export async function getChantierAvailability(
     const dayConfig = hours[String(weekday)];
     if (!dayConfig?.enabled) continue;
     if (daysOff.some((d) => dateStr >= d.from && dateStr <= d.to)) continue;
-    // Au moins un professionnel disponible pour le chantier ce jour-là.
-    if (coverage.active && !coverage.chantierDays.has(dateStr)) continue;
+    if (capacite.actif && !capacite.jours.has(dateStr)) continue;
 
     const start = parisTimeToUtc(dateStr, dayConfig.start); // 08:00
     if (start < minStart) continue;
@@ -207,12 +212,13 @@ export async function getChantierAvailability(
 
     const free = (end: Date) =>
       end > start &&
-      !busy.some((b) =>
-        overlaps(
-          { start: new Date(start.getTime() - buffer * 60_000), end: new Date(end.getTime() + buffer * 60_000) },
-          b
-        )
-      );
+      (capacite.actif ||
+        !busy.some((b) =>
+          overlaps(
+            { start: new Date(start.getTime() - buffer * 60_000), end: new Date(end.getTime() + buffer * 60_000) },
+            b
+          )
+        ));
 
     const demi = free(demiEnd);
     const journee = free(fullEnd);
@@ -230,9 +236,10 @@ export async function checkChantier(
   settings: Settings,
   startAt: Date,
   duration: ChantierDuration,
-  excludeBookingId?: string
+  excludeBookingId?: string,
+  clientCp?: string
 ): Promise<Date | null> {
-  const days = await getChantierAvailability(settings, excludeBookingId);
+  const days = await getChantierAvailability(settings, excludeBookingId, clientCp);
   const day = days.find((d) => d.startAt === startAt.toISOString());
   if (!day) return null;
   if (duration === "demi" && !day.demi) return null;

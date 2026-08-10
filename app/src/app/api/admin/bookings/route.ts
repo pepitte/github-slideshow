@@ -13,7 +13,14 @@ export async function GET() {
   }
   const bookings = await prisma.booking.findMany({
     orderBy: { startAt: "asc" },
-    include: { photos: { select: { id: true, dataUrl: true } } },
+    include: {
+      photos: { select: { id: true, dataUrl: true } },
+      pro: { select: { id: true, name: true } },
+    },
+  });
+  const pros = await prisma.pro.findMany({
+    select: { id: true, name: true, basePostalCode: true, radiusKm: true, status: true },
+    orderBy: { name: "asc" },
   });
   // Les prospects venus des publicités ont leur propre section (Publicités Meta).
   const leads = await prisma.lead.findMany({
@@ -21,7 +28,7 @@ export async function GET() {
     orderBy: { createdAt: "desc" },
     take: 50,
   });
-  return NextResponse.json({ bookings, leads });
+  return NextResponse.json({ bookings, leads, pros });
 }
 
 /** Photos valides : data URLs image, 10 max. */

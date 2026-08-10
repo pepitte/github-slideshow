@@ -22,8 +22,11 @@ type Booking = {
   startAt: string | null;
   endAt: string | null;
   status: string;
+  proId: string | null;
+  pro: { id: string; name: string } | null;
   photos: Photo[];
 };
+type ProLite = { id: string; name: string; basePostalCode: string; radiusKm: number; status: string };
 
 /** Libellé de la formule chantier, déduit des heures (fin à 12h = demi-journée). */
 function chantierLabel(b: Booking): string {
@@ -67,6 +70,7 @@ function fmt(dateIso: string | null): string {
 
 export default function AdminDashboard() {
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [pros, setPros] = useState<ProLite[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [showPast, setShowPast] = useState(false);
@@ -91,6 +95,7 @@ export default function AdminDashboard() {
       .then((data) => {
         setBookings(data.bookings ?? []);
         setLeads(data.leads ?? []);
+        setPros(data.pros ?? []);
       })
       .finally(() => setLoading(false));
   }
@@ -120,6 +125,22 @@ export default function AdminDashboard() {
       setTimeout(() => setNotesSaved(false), 2500);
     } else {
       setNotesError("Échec de l'enregistrement, réessayez.");
+    }
+  }
+
+  async function changePro(id: string, proId: string) {
+    const res = await fetch(`/api/admin/bookings/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ proId }),
+    });
+    if (res.ok) {
+      const pro = pros.find((p) => p.id === proId) ?? null;
+      setBookings((prev) =>
+        prev.map((b) =>
+          b.id === id ? { ...b, proId: proId || null, pro: pro ? { id: pro.id, name: pro.name } : null } : b
+        )
+      );
     }
   }
 
@@ -221,6 +242,17 @@ export default function AdminDashboard() {
                       Créé manuellement
                     </span>
                   )}
+                  {b.kind === "chantier" && b.status !== "annule" && (
+                    b.pro ? (
+                      <span className="mt-1 inline-block rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-800">
+                        {b.pro.name}
+                      </span>
+                    ) : (
+                      <span className="mt-1 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800">
+                        À attribuer
+                      </span>
+                    )
+                  )}
                 </div>
                 <div className="flex flex-col items-end gap-1">
                   <span
@@ -251,6 +283,28 @@ export default function AdminDashboard() {
                     <p>{[b.address, `${b.postalCode} ${b.city}`.trim()].filter(Boolean).join(", ")}</p>
                   )}
                   {b.kind === "chantier" && b.endAt && <p>{chantierLabel(b)}</p>}
+
+                  {b.kind === "chantier" && (
+                    <div>
+                      <span className="label">Professionnel attribué</span>
+                      <select
+                        className="input"
+                        value={b.proId ?? ""}
+                        onChange={(e) => changePro(b.id, e.target.value)}
+                      >
+                        <option value="">— À attribuer —</option>
+                        {pros.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.name}
+                            {p.status !== "disponible_chantier" ? " (pas dispo chantier)" : ""}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="mt-1 text-xs text-leaf-800/50">
+                        Attribué automatiquement au plus proche disponible ; changez-le ici si besoin.
+                      </p>
+                    </div>
+                  )}
 
                   <div>
                     <span className="label">Notes</span>

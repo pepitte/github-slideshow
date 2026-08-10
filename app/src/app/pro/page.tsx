@@ -6,6 +6,50 @@ import { PRO_STATUS_META, PRO_STATUS_ORDER } from "@/lib/proStatus";
 import AgendaView from "@/components/AgendaView";
 import PhotoUpload from "@/components/PhotoUpload";
 
+type Mission = {
+  id: string;
+  day: string;
+  startAt: string;
+  endAt: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  address: string;
+  postalCode: string;
+  city: string;
+  projectType: string;
+  description: string;
+};
+type EquipeJour = { id: string; day: string; city: string; proName: string };
+
+const PROJET_LABELS: Record<string, string> = {
+  entretien: "Entretien de jardin",
+  taille_haie: "Taille de haie",
+  debroussaillage: "Débroussaillage",
+  contrat_annuel: "Contrat d'entretien",
+  autre: "Autre projet",
+};
+
+function heureParis(iso: string): string {
+  return new Date(iso)
+    .toLocaleTimeString("fr-FR", { timeZone: "Europe/Paris", hour: "2-digit", minute: "2-digit" })
+    .replace(":", "h");
+}
+function labelJour(day: string, today: string): string {
+  if (day === today) return "Aujourd'hui";
+  const date = new Date(`${day}T12:00:00`);
+  const demain = new Date(`${today}T12:00:00`);
+  demain.setDate(demain.getDate() + 1);
+  const label = date.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+  if (day === `${demain.getFullYear()}-${String(demain.getMonth() + 1).padStart(2, "0")}-${String(demain.getDate()).padStart(2, "0")}`) {
+    return `Demain — ${label}`;
+  }
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+function heuresLabel(minutes: number): string {
+  return `${Math.floor(minutes / 60)}h${minutes % 60 ? String(minutes % 60).padStart(2, "0") : ""}`;
+}
+
 type Pro = {
   name: string;
   email: string;
@@ -44,6 +88,43 @@ export default function ProDashboard() {
   const [photosBefore, setPhotosBefore] = useState<string[]>([]);
   const [photosAfter, setPhotosAfter] = useState<string[]>([]);
   const [photosSaved, setPhotosSaved] = useState(false);
+  // Mes chantiers attribués + activité de l'équipe + heures pointées
+  const [missions, setMissions] = useState<Mission[]>([]);
+  const [equipe, setEquipe] = useState<EquipeJour[]>([]);
+  const [heures, setHeures] = useState<{ semaine: number; mois: number } | null>(null);
+  const [vueSemaine, setVueSemaine] = useState(false);
+  const [declineMsg, setDeclineMsg] = useState("");
+
+  function loadMissions() {
+    fetch("/api/pro/missions")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!data) return;
+        setMissions(data.miens ?? []);
+        setEquipe(data.equipe ?? []);
+        setHeures(data.heures ?? null);
+      })
+      .catch(() => {});
+  }
+  useEffect(loadMissions, []);
+
+  async function decline(m: Mission) {
+    if (
+      !window.confirm(
+        `Vous ne pouvez pas assurer le chantier du ${labelJour(m.day, ymd(new Date())).toLowerCase()} ?\nIl sera proposé à un autre professionnel et le gérant sera prévenu.`
+      )
+    )
+      return;
+    const res = await fetch("/api/pro/missions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: m.id, action: "decline" }),
+    });
+    const data = await res.json();
+    setDeclineMsg(data.message ?? (res.ok ? "Désistement enregistré." : "Action impossible."));
+    loadMissions();
+    setTimeout(() => setDeclineMsg(""), 8000);
+  }
 
   useEffect(() => {
     fetch(`/api/pro/pointage?date=${pointDate}`)
@@ -243,6 +324,160 @@ export default function ProDashboard() {
         </div>
       </section>
 
+      {declineMsg && (
+        <p className="mb-4 rounded-xl bg-leaf-50 px-4 py-3 text-sm font-medium text-leaf-800">{declineMsg}</p>
+      )}
+
+      {/* Prochain chantier attribué : l'essentiel en grand, itinéraire + appel */}
+      {missions.length > 0 && (
+        <section className="card mb-4 space-y-3 border-2 border-leaf-600/30">
+          <div className="flex items-center justify-between">
+            <h2 className="font-bold">Mon prochain chantier</h2>
+            <span className="rounded-full bg-green-100 px-2.5 py-0.5 text-[11px] font-semibold text-green-800">
+              Attribué à vous
+            </span>
+          </div>
+          <p className="text-lg font-bold text-leaf-900">
+            {labelJour(missions[0].day, ymd(new Date()))}
+            <span className="ml-2 text-base font-semibold text-leaf-800/70">
+              {heureParis(missions[0].startAt)} – {heureParis(missions[0].endAt)}
+            </span>
+          </p>
+          <div className="text-sm">
+            <p className="font-semibold">
+              {missions[0].firstName} {missions[0].lastName}
+              <span className="ml-2 font-normal text-leaf-800/70">
+                {PROJET_LABELS[missions[0].projectType] ?? missions[0].projectType}
+              </span>
+            </p>
+            <p className="text-leaf-800/80">
+              {missions[0].address}, {missions[0].postalCode} {missions[0].city}
+            </p>
+            {missions[0].description && (
+              <p className="mt-1 rounded-xl bg-sand-50 p-3 text-leaf-800/80">{missions[0].description}</p>
+            )}
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <a
+              className="btn-primary flex-1 text-center"
+              href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
+                `${missions[0].address}, ${missions[0].postalCode} ${missions[0].city}`
+              )}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Itinéraire
+            </a>
+            {missions[0].phone && (
+              <a className="btn-secondary flex-1 text-center" href={`tel:${missions[0].phone}`}>
+                Appeler le client
+              </a>
+            )}
+          </div>
+          <button onClick={() => decline(missions[0])} className="text-xs text-red-600 underline">
+            Je ne peux pas assurer ce chantier
+          </button>
+        </section>
+      )}
+
+      {/* Les prochains jours : mes chantiers en avant, l'équipe en gris */}
+      <section className="card mb-4 space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-bold">Mes prochains jours</h2>
+          <button
+            onClick={() => setVueSemaine((v) => !v)}
+            className="text-xs font-semibold text-leaf-700 underline"
+          >
+            {vueSemaine ? "Vue liste" : "Vue semaine"}
+          </button>
+        </div>
+        {vueSemaine ? (
+          <AgendaView endpoint="/api/pro/planning" loginPath="/pro/login" />
+        ) : missions.length === 0 && equipe.length === 0 ? (
+          <p className="py-4 text-center text-sm text-leaf-800/60">
+            Aucun chantier à venir pour le moment. Pensez à cocher vos dates disponibles plus bas :
+            les chantiers réservés dans votre secteur vous seront attribués automatiquement.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {Array.from(
+              new Set([...missions.map((m) => m.day), ...equipe.map((e) => e.day)])
+            )
+              .sort()
+              .slice(0, 14)
+              .map((day) => {
+                const miens = missions.filter((m) => m.day === day);
+                const autres = equipe.filter((e) => e.day === day);
+                return (
+                  <div key={day}>
+                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-leaf-800/50">
+                      {labelJour(day, ymd(new Date()))}
+                    </p>
+                    {miens.map((m) => (
+                      <div
+                        key={m.id}
+                        className="mb-1 rounded-xl border border-green-200 bg-green-50 px-3 py-2 text-sm"
+                      >
+                        <p className="font-semibold text-green-900">
+                          {heureParis(m.startAt)} – {heureParis(m.endAt)} · {m.firstName} {m.lastName}
+                        </p>
+                        <p className="text-green-800/80">
+                          {m.address}, {m.city} · {PROJET_LABELS[m.projectType] ?? m.projectType}
+                        </p>
+                        <div className="mt-1 flex gap-3 text-xs font-semibold">
+                          <a
+                            className="text-green-900 underline"
+                            href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
+                              `${m.address}, ${m.postalCode} ${m.city}`
+                            )}`}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Itinéraire
+                          </a>
+                          {m.phone && (
+                            <a className="text-green-900 underline" href={`tel:${m.phone}`}>
+                              {m.phone}
+                            </a>
+                          )}
+                          <button onClick={() => decline(m)} className="text-red-600 underline">
+                            Je ne peux pas
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    {autres.map((e) => (
+                      <div
+                        key={e.id}
+                        className="mb-1 rounded-xl bg-sand-50 px-3 py-1.5 text-xs text-leaf-800/60"
+                      >
+                        Chantier à {e.city || "?"} — {e.proName}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+          </div>
+        )}
+      </section>
+
+      {/* Heures pointées */}
+      {heures && (
+        <section className="card mb-4">
+          <h2 className="mb-2 font-bold">Mes heures pointées</h2>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-xl bg-sand-50 px-3 py-2 text-center">
+              <p className="text-xs text-leaf-800/60">Cette semaine</p>
+              <p className="text-lg font-bold">{heures.semaine ? heuresLabel(heures.semaine) : "—"}</p>
+            </div>
+            <div className="rounded-xl bg-sand-50 px-3 py-2 text-center">
+              <p className="text-xs text-leaf-800/60">Ce mois-ci</p>
+              <p className="text-lg font-bold">{heures.mois ? heuresLabel(heures.mois) : "—"}</p>
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Statut */}
       <section className="card space-y-3">
         <h2 className="font-bold">Votre statut</h2>
@@ -355,10 +590,6 @@ export default function ProDashboard() {
         {saved && <span className="text-sm font-semibold text-leaf-700">✓ Enregistré</span>}
       </div>
 
-      {/* Agenda de l'entreprise (le même que côté gérant, sans les téléphones) */}
-      <section className="mt-8 border-t border-leaf-100 pt-6">
-        <AgendaView endpoint="/api/pro/planning" loginPath="/pro/login" />
-      </section>
     </main>
   );
 }

@@ -102,6 +102,12 @@ model Booking {
   startAt        DateTime?
   endAt          DateTime?
   status         String    @default("a_faire") // a_faire | devis_envoye | gagne | perdu | annule
+  // Chantier : professionnel attribué automatiquement (le plus proche disponible).
+  // Null = « à attribuer » (aucun pro éligible) — le gérant est alerté.
+  proId          String?
+  pro            Pro?      @relation(fields: [proId], references: [id], onDelete: SetNull)
+  // Pros s'étant désistés sur ce RDV : on ne le leur repropose pas.
+  declinedProsJson String  @default("[]")
   cancelToken    String    @unique @default(cuid())
   googleEventId  String    @default("")
   reminder24Sent Boolean   @default(false)
@@ -154,6 +160,7 @@ model Pro {
   resetExpiry    DateTime?
   updatedAt      DateTime @updatedAt
   workEntries    WorkEntry[]
+  bookings       Booking[]
 }
 
 // Pointage terrain d'un professionnel : une ligne par jour (heure de Paris).
