@@ -2,7 +2,7 @@
 
 // Vue gérant : tous les professionnels et leurs disponibilités déclarées.
 import { useEffect, useState } from "react";
-import { PRO_STATUS_META } from "@/lib/proStatus";
+import { dispoResume, parseDispo } from "@/lib/proStatus";
 
 type Pro = {
   id: string;
@@ -13,35 +13,30 @@ type Pro = {
   baseCity: string;
   basePostalCode: string;
   radiusKm: number;
-  status: string;
   availableDays: number;
   datesJson: string;
-  devisSlotsJson: string;
+  devisDispoJson: string;
   note: string;
   updatedAt: string;
 };
 
-function fmtSlots(json: string): string {
-  try {
-    const slots: string[] = JSON.parse(json);
-    if (!slots.length) return "—";
-    return slots.map((s) => s.replace(":", "h")).join(" · ");
-  } catch {
-    return "—";
-  }
+function jourCourt(d: string): string {
+  return new Date(`${d}T12:00:00`).toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
 }
 
-function fmtDates(json: string): string {
-  try {
-    const dates: string[] = JSON.parse(json);
-    if (!dates.length) return "—";
-    return dates
-      .slice(0, 8)
-      .map((d) => new Date(`${d}T12:00:00`).toLocaleDateString("fr-FR", { day: "numeric", month: "short" }))
-      .join(", ") + (dates.length > 8 ? `… (+${dates.length - 8})` : "");
-  } catch {
-    return "—";
-  }
+function fmtJours(days: string[]): string {
+  if (!days.length) return "—";
+  return days.slice(0, 8).map(jourCourt).join(", ") + (days.length > 8 ? `… (+${days.length - 8})` : "");
+}
+
+/** « 13 août : 10h00 · 17h00 » pour chaque jour renseigné. */
+function fmtCreneaux(json: string, days: string[]): string {
+  const dispo = parseDispo(json);
+  if (!days.length) return "—";
+  return days
+    .slice(0, 4)
+    .map((d) => `${jourCourt(d)} : ${dispo[d].map((t) => t.replace(":", "h")).join(" · ")}`)
+    .join(" | ") + (days.length > 4 ? `… (+${days.length - 4} jour(s))` : "");
 }
 
 export default function AdminProsPage() {
@@ -70,7 +65,9 @@ export default function AdminProsPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const available = pros.filter((p) => p.status !== "indisponible");
+  // « Disponible » = a réellement coché quelque chose à venir dans son agenda.
+  const today = new Date().toISOString().slice(0, 10);
+  const available = pros.filter((p) => dispoResume(p, today).actif);
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-6">
@@ -89,7 +86,7 @@ export default function AdminProsPage() {
 
       <div className="space-y-3">
         {pros.map((p) => {
-          const meta = PRO_STATUS_META[p.status] ?? PRO_STATUS_META.indisponible;
+          const resume = dispoResume(p, today);
           return (
             <div key={p.id} className="card">
               <div className="flex items-start justify-between gap-3">
@@ -105,10 +102,10 @@ export default function AdminProsPage() {
                 </div>
                 <div className="flex flex-col items-end gap-1.5">
                   <span
-                    className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${meta.badge}`}
+                    className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${resume.badge}`}
                   >
-                    <span className="h-2 w-2 rounded-full" style={{ background: meta.dot }} />
-                    {meta.label}
+                    <span className="h-2 w-2 rounded-full" style={{ background: resume.dot }} />
+                    {resume.label}
                   </span>
                   <button
                     onClick={() => removePro(p)}
@@ -124,9 +121,9 @@ export default function AdminProsPage() {
                   {" · "}
                   <a className="text-leaf-700 underline" href={`mailto:${p.email}`}>{p.email}</a>
                 </p>
-                <p>{p.availableDays} journée(s) annoncée(s)</p>
-                <p>{fmtDates(p.datesJson)}</p>
-                <p>Créneaux devis : {fmtSlots(p.devisSlotsJson)}</p>
+                <p className="text-leaf-800/70">{resume.detail}</p>
+                <p>Jours de chantier : {fmtJours(resume.jours)}</p>
+                <p>Créneaux de visite : {fmtCreneaux(p.devisDispoJson, resume.joursDevis)}</p>
                 {p.note && <p className="rounded-xl bg-sand-50 p-3 text-leaf-800/80">{p.note}</p>}
               </div>
             </div>

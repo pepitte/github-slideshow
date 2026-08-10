@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import ManualBookingModal from "./ManualBookingModal";
 import PhotoUpload from "@/components/PhotoUpload";
+import { parseDates } from "@/lib/proStatus";
 
 type Photo = { id: string; dataUrl: string };
 type Booking = {
@@ -26,7 +27,23 @@ type Booking = {
   pro: { id: string; name: string } | null;
   photos: Photo[];
 };
-type ProLite = { id: string; name: string; basePostalCode: string; radiusKm: number; status: string };
+type ProLite = {
+  id: string;
+  name: string;
+  basePostalCode: string;
+  radiusKm: number;
+  datesJson: string;
+};
+
+/** Jour de Paris (AAAA-MM-JJ) d'une date ISO. */
+function parisDay(iso: string): string {
+  return new Intl.DateTimeFormat("fr-CA", {
+    timeZone: "Europe/Paris",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(iso));
+}
 
 /** Libellé de la formule chantier, déduit des heures (fin à 12h = demi-journée). */
 function chantierLabel(b: Booking): string {
@@ -296,7 +313,9 @@ export default function AdminDashboard() {
                         {pros.map((p) => (
                           <option key={p.id} value={p.id}>
                             {p.name}
-                            {p.status !== "disponible_chantier" ? " (pas dispo chantier)" : ""}
+                            {b.startAt && !parseDates(p.datesJson).includes(parisDay(b.startAt))
+                              ? " (n'a pas déclaré ce jour)"
+                              : ""}
                           </option>
                         ))}
                       </select>

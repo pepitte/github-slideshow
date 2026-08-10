@@ -59,11 +59,10 @@ export async function GET(req: NextRequest) {
         id: true,
         name: true,
         phone: true,
-        status: true,
         radiusKm: true,
         baseCity: true,
         datesJson: true,
-        devisSlotsJson: true,
+        devisDispoJson: true,
       },
     }),
   ]);
