@@ -33,6 +33,24 @@ Branche de travail : `claude/landscaping-booking-platform-ejx6ap`.
   couverts par un pro « disponible chantier » et les jour+heure couverts par un
   pro « disponible devis ». Filet de sécurité : si aucun pro n'a déclaré de
   date, le filtre est ignoré.
+- **Attribution automatique des chantiers** (`lib/assign.ts`, choix du client
+  10 août) : dès qu'un pro a déclaré des dates chantier (« mode équipe »),
+  capacité = **un chantier/jour/pro**, l'agenda Google du gérant ne bloque plus
+  les chantiers, et chaque réservation est attribuée au pro **le plus proche à
+  portée** (distance CP client ↔ CP du pro ≤ rayon déclaré ; à égalité le moins
+  chargé de la semaine ; multi-jours → même pro sur tous les jours si possible).
+  Distances via table embarquée `lib/data/cp-gps.json` (6 188 CP français,
+  151 Ko, haversine dans `lib/geo.ts`) — aucun service externe. Le tunnel passe
+  le CP client (`/api/availability?cp=`) : seuls les jours couverts par un pro à
+  portée sont proposés. Personne d'éligible → `Booking.proId = null` (« À
+  attribuer », badge orange admin) + alerte gérant. Désistement pro (« Je ne
+  peux pas », `POST /api/pro/missions`) → réattribution auto au suivant
+  (`declinedProsJson` anti ping-pong) + `notifyOwnerReassign`. Le gérant
+  réattribue via sélecteur dans la fiche (`PATCH /api/admin/bookings/:id
+  {proId}`). Le pro attribué est prévenu par email (`notifyProNewChantier`) et
+  voit **le téléphone du client** ; les autres pros non (équipe anonymisée :
+  ville + prénom). Schéma : `Booking.proId` nullable + `declinedProsJson`,
+  sans contrainte unique.
 - **Zone d'intervention** : codes postaux (préfixe accepté) ou rayon km ;
   hors zone → message + formulaire de contact (Lead).
 - **Espace admin** (`/admin`) : dashboard RDV avec statuts (à faire / devis
@@ -118,10 +136,14 @@ Docs : `app/ARCHITECTURE.md`.
   RDV : bleu = devis, vert = chantier), créneaux devis, dates. **Adresse de
   départ + rayon demandés à l'inscription** (Pro.baseAddress/basePostalCode/
   baseCity/radiusKm) pour connaître le secteur ; la section « Vos informations »
-  a été retirée de `/pro`. En bas de `/pro` : **le même agenda que le gérant**
-  (composant partagé `AgendaView`, API `GET /api/pro/planning`) mais **sans les
-  téléphones** (prop `showContacts`). Vue gérant : onglet « Professionnels »
-  dans `/admin` (adresse complète affichée).
+  a été retirée de `/pro`. **Tableau de bord pro (refonte 10 août)** : « Ma
+  journée » (pointage + photos), « Mon prochain chantier » (client, adresse,
+  téléphone, boutons Itinéraire/Appeler, « Je ne peux pas »), « Mes prochains
+  jours » (liste mobile : ses chantiers en vert, l'équipe en gris ; bascule
+  « Vue semaine » vers `AgendaView` sans téléphones), « Mes heures pointées »
+  (semaine/mois), puis statut/créneaux/dates. API `GET/POST /api/pro/missions`.
+  Vue gérant : onglet « Professionnels » dans `/admin` (adresse complète
+  affichée).
 - **Connexion unifiée** : `/connexion` (choix particulier / professionnel).
 - **Devis manuel** (bouton « Ajouter un devis manuellement », tableau de bord
   gérant) : modale tous champs facultatifs (garde-fou « au moins une info »,
