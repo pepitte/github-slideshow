@@ -55,6 +55,9 @@ export function currentProId(): string | null {
 export const PRO_COOKIE_NAME = PRO_COOKIE;
 export const PRO_SESSION_MAX_AGE = SESSION_DAYS * 24 * 3600;
 
+// Valeurs acceptées pour Pro.status (simple mémoire de l'onglet ouvert dans
+// « Mes disponibilités »). Les deux dernières ne servent plus qu'aux comptes
+// créés avant la suppression du statut « indisponible ».
 export const PRO_STATUSES = [
   "disponible_devis",
   "disponible_chantier",

@@ -4,7 +4,7 @@
 // RDV clients (blocs colorés sur grille horaire) et les dispos des pros.
 // `showContacts` contrôle l'affichage des téléphones (réservé au gérant).
 import { useEffect, useMemo, useState } from "react";
-import { PRO_STATUS_META } from "@/lib/proStatus";
+import { MODE_META, parseDates, parseDispo } from "@/lib/proStatus";
 
 type Booking = {
   id: string;
@@ -22,12 +22,13 @@ type Pro = {
   id: string;
   name: string;
   phone?: string;
-  status: string;
   radiusKm: number;
   baseCity: string;
   datesJson: string;
-  devisSlotsJson: string;
+  devisDispoJson: string;
 };
+/** Un pro sur un jour donné, avec ce qu'il y a déclaré. */
+type ProJour = { pro: Pro; chantier: boolean; creneaux: string[] };
 type View = "mois" | "semaine" | "jour";
 
 // Grille horaire : 7h00 → 20h00 (les chantiers démarrent à 8h, les devis finissent à 20h)
@@ -147,13 +148,24 @@ export default function AgendaView({
     return map;
   }, [bookings]);
 
+  // Un pro est disponible un jour donné s'il l'a coché en chantier ou s'il y a
+  // déclaré des créneaux de visite — il n'y a pas d'autre statut.
   const prosByDay = useMemo(() => {
-    const map: Record<string, Pro[]> = {};
+    const map: Record<string, ProJour[]> = {};
+    const entry = (day: string, p: Pro): ProJour => {
+      const list = (map[day] ??= []);
+      let found = list.find((x) => x.pro.id === p.id);
+      if (!found) {
+        found = { pro: p, chantier: false, creneaux: [] };
+        list.push(found);
+      }
+      return found;
+    };
     for (const p of pros) {
-      if (p.status === "indisponible") continue;
-      try {
-        for (const d of JSON.parse(p.datesJson) as string[]) (map[d] ??= []).push(p);
-      } catch {}
+      for (const d of parseDates(p.datesJson)) entry(d, p).chantier = true;
+      for (const [d, slots] of Object.entries(parseDispo(p.devisDispoJson))) {
+        entry(d, p).creneaux = slots;
+      }
     }
     return map;
   }, [pros]);
@@ -241,9 +253,9 @@ export default function AgendaView({
         <span className="flex flex-wrap justify-center gap-0.5">
           {(prosByDay[day] ?? []).slice(0, 4).map((p) => (
             <span
-              key={p.id}
+              key={p.pro.id}
               className="h-1.5 w-1.5 rounded-sm"
-              style={{ background: PRO_STATUS_META[p.status]?.dot ?? "#999" }}
+              style={{ background: MODE_META[p.chantier ? "chantier" : "devis"].dot }}
             />
           ))}
         </span>
@@ -356,7 +368,7 @@ export default function AgendaView({
       <div className="mb-3 flex flex-wrap gap-3 text-xs text-leaf-800/70">
         <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-blue-500" /> RDV devis</span>
         <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-green-500" /> Chantier</span>
-        <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm bg-leaf-200" /> Pro disponible (couleur = statut)</span>
+        <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm bg-leaf-200" /> Pro disponible (vert = chantier, bleu = visites)</span>
       </div>
 
       {loading ? (
@@ -399,9 +411,9 @@ export default function AgendaView({
                         <span className="mt-0.5 flex flex-wrap gap-0.5">
                           {(prosByDay[day] ?? []).slice(0, 4).map((p) => (
                             <span
-                              key={p.id}
+                              key={p.pro.id}
                               className="h-2 w-2 rounded-sm"
-                              style={{ background: PRO_STATUS_META[p.status]?.dot ?? "#999" }}
+                              style={{ background: MODE_META[p.chantier ? "chantier" : "devis"].dot }}
                             />
                           ))}
                         </span>
@@ -461,19 +473,21 @@ export default function AgendaView({
                   </p>
                 ) : (
                   <div className="space-y-2">
-                    {dayPros.map((p) => {
-                      const meta = PRO_STATUS_META[p.status] ?? PRO_STATUS_META.indisponible;
-                      let slots: string[] = [];
-                      try {
-                        slots = (JSON.parse(p.devisSlotsJson) as string[]) ?? [];
-                      } catch {}
+                    {dayPros.map(({ pro: p, chantier, creneaux }) => {
+                      const meta = MODE_META[chantier ? "chantier" : "devis"];
+                      const quoi = [
+                        chantier ? "chantier (journée)" : "",
+                        creneaux.length ? `${creneaux.length} créneau(x) de visite` : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" · ");
                       return (
                         <div key={p.id} className="rounded-xl bg-sand-50 px-3 py-2 text-sm">
                           <div className="flex items-center gap-2">
                             <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: meta.dot }} />
                             <span className="font-semibold">{p.name}</span>
                             <span className="text-leaf-800/70">
-                              {meta.label} · rayon {p.radiusKm} km
+                              {quoi} · rayon {p.radiusKm} km
                             </span>
                             {showContacts && (
                               <a className="ml-auto text-leaf-700 underline" href={`tel:${p.phone}`}>
@@ -481,10 +495,10 @@ export default function AgendaView({
                               </a>
                             )}
                           </div>
-                          {slots.length > 0 && (
+                          {creneaux.length > 0 && (
                             <div className="mt-1.5 flex flex-wrap items-center gap-1">
-                              <span className="text-xs text-leaf-800/60">Heures devis :</span>
-                              {slots.map((s) => (
+                              <span className="text-xs text-leaf-800/60">Heures de visite :</span>
+                              {creneaux.map((s) => (
                                 <span key={s} className="rounded-md bg-blue-100 px-1.5 py-0.5 text-xs font-semibold text-blue-800">
                                   {s.replace(":", "h")}
                                 </span>

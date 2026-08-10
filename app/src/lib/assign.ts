@@ -1,6 +1,7 @@
 // Attribution automatique des chantiers au professionnel disponible le plus
 // proche du client. Les règles, dans l'ordre :
-//   1. le pro a coché la date dans son agenda et il est « disponible chantier » ;
+//   1. le pro a coché la date dans son agenda (c'est la SEULE déclaration de
+//      disponibilité : il n'existe plus de statut « indisponible ») ;
 //   2. il n'a pas déjà un chantier ce jour-là (un chantier par jour et par pro) ;
 //   3. il est à portée : distance code postal client ↔ code postal du pro ≤ son rayon ;
 //   4. le plus proche gagne — à égalité, celui qui a le moins de chantiers
@@ -10,6 +11,9 @@ import type { Pro } from "@prisma/client";
 import { prisma } from "./prisma";
 import { cpToLatLng, distanceKm } from "./geo";
 import { utcToParis } from "./dates";
+import { parseDates, parseDispo } from "./proStatus";
+
+export { parseDispo };
 
 export type Candidate = {
   pro: Pro;
@@ -18,34 +22,6 @@ export type Candidate = {
   eligible: boolean;
   raison: string;
 };
-
-/** {"2026-08-13":["10:00","17:00"], ...} — créneaux devis par jour d'un pro. */
-export function parseDispo(json: string): Record<string, string[]> {
-  try {
-    const obj = JSON.parse(json);
-    if (!obj || typeof obj !== "object" || Array.isArray(obj)) return {};
-    const out: Record<string, string[]> = {};
-    for (const [day, slots] of Object.entries(obj)) {
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || !Array.isArray(slots)) continue;
-      const clean = (slots as unknown[]).filter(
-        (t): t is string => typeof t === "string" && /^\d{2}:\d{2}$/.test(t)
-      );
-      if (clean.length) out[day] = Array.from(new Set(clean)).sort();
-    }
-    return out;
-  } catch {
-    return {};
-  }
-}
-
-function parseDates(json: string): string[] {
-  try {
-    const arr = JSON.parse(json);
-    return Array.isArray(arr) ? arr.map(String) : [];
-  } catch {
-    return [];
-  }
-}
 
 /** Jour de Paris (AAAA-MM-JJ) d'un RDV. */
 export function bookingDay(startAt: Date): string {
@@ -106,9 +82,12 @@ async function chargeSemaine(day: string): Promise<Map<string, number>> {
   return map;
 }
 
-/** Pros « disponible chantier » ayant coché au moins un des jours demandés. */
+/**
+ * Tous les pros, avec les jours de chantier qu'ils ont cochés. Ne rien cocher
+ * = ne rien recevoir : c'est la seule façon de se déclarer indisponible.
+ */
 export async function prosChantier(): Promise<(Pro & { jours: string[] })[]> {
-  const pros = await prisma.pro.findMany({ where: { status: "disponible_chantier" } });
+  const pros = await prisma.pro.findMany();
   return pros.map((p) => Object.assign(p, { jours: parseDates(p.datesJson) }));
 }
 
@@ -219,8 +198,9 @@ export async function assignChantiers(
 // visite devis qui chevauche ce créneau (30 min par visite).
 // ---------------------------------------------------------------------------
 
+/** Tous les pros, avec les créneaux de visite qu'ils ont déclarés jour par jour. */
 export async function prosDevis(): Promise<(Pro & { dispo: Record<string, string[]> })[]> {
-  const pros = await prisma.pro.findMany({ where: { status: "disponible_devis" } });
+  const pros = await prisma.pro.findMany();
   return pros.map((p) => Object.assign(p, { dispo: parseDispo(p.devisDispoJson) }));
 }
 

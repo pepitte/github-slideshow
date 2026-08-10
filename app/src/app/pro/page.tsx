@@ -4,7 +4,7 @@
 // aperçu des jours à venir. Le détail vit dans les sections de la barre latérale.
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { PRO_STATUS_META } from "@/lib/proStatus";
+import { dispoResume } from "@/lib/proStatus";
 import {
   type Mission,
   type EquipeJour,
@@ -18,7 +18,11 @@ import {
 } from "./shared";
 
 export default function ProDashboard() {
-  const [pro, setPro] = useState<{ name: string; status: string } | null>(null);
+  const [pro, setPro] = useState<{
+    name: string;
+    datesJson: string;
+    devisDispoJson: string;
+  } | null>(null);
   const [missions, setMissions] = useState<Mission[]>([]);
   const [equipe, setEquipe] = useState<EquipeJour[]>([]);
   const [heures, setHeures] = useState<{ semaine: number; mois: number } | null>(null);
@@ -45,7 +49,13 @@ export default function ProDashboard() {
         }
         return r.json();
       })
-      .then(({ pro }) => setPro({ name: pro.name, status: pro.status }))
+      .then(({ pro }) =>
+        setPro({
+          name: pro.name,
+          datesJson: pro.datesJson,
+          devisDispoJson: pro.devisDispoJson,
+        })
+      )
       .catch(() => {});
     loadMissions();
   }, []);
@@ -67,7 +77,7 @@ export default function ProDashboard() {
     return <main className="mx-auto max-w-lg px-4 py-10 text-center text-leaf-800/60">Chargement…</main>;
   }
 
-  const statut = PRO_STATUS_META[pro.status] ?? PRO_STATUS_META.indisponible;
+  const resume = dispoResume(pro, ymd(new Date()));
   const prochain = missions[0];
   const apercu = Array.from(new Set([...missions.map((m) => m.day), ...equipe.map((e) => e.day)]))
     .sort()
@@ -107,11 +117,11 @@ export default function ProDashboard() {
           </p>
         </Link>
         <Link href="/pro/disponibilites" className="card !p-3 text-center transition hover:bg-leaf-50">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-leaf-800/50">Statut</p>
-          <p className="mx-auto mt-1.5 h-5 w-5 rounded-full" style={{ background: statut.dot }} />
-          <p className="mt-1 text-[11px] font-semibold text-leaf-800/80">
-            {statut.label.replace("Disponible pour un ", "").replace("Disponible sous ", "Sous ")}
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-leaf-800/50">
+            Mes dispos
           </p>
+          <p className="mx-auto mt-1.5 h-5 w-5 rounded-full" style={{ background: resume.dot }} />
+          <p className="mt-1 text-[11px] font-semibold text-leaf-800/80">{resume.label}</p>
         </Link>
       </div>
 

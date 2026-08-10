@@ -146,8 +146,10 @@ model Pro {
   baseCity       String   @default("")
   basePostalCode String   @default("")
   radiusKm       Int      @default(30)
-  // disponible_devis | disponible_chantier | sous_confirmation | indisponible
-  status         String   @default("indisponible")
+  // Dernier onglet ouvert dans « Mes disponibilités » (disponible_devis |
+  // disponible_chantier). N'a plus d'effet sur les attributions : la
+  // disponibilité découle uniquement de datesJson / devisDispoJson.
+  status         String   @default("disponible_chantier")
   // Nombre de journées disponibles annoncées
   availableDays  Int      @default(0)
   // Dates disponibles : ["2026-08-12","2026-08-13",...]

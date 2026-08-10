@@ -1,12 +1,13 @@
 "use client";
 
-// Disponibilités : statut (3 choix), puis selon le statut —
+// Disponibilités : deux agendas, au choix de l'onglet —
 //  - chantier : un tap sur un jour = disponible (vert) ;
 //  - devis : un tap sur un jour ouvre le panneau du jour (créneaux de 30 min
 //    + raccourcis Fin de journée / Matin / Après-midi).
-// Tout s'enregistre immédiatement : aucun bouton « Enregistrer ».
+// Il n'y a pas de bouton « indisponible » : ce qui n'est pas coché n'est pas
+// proposé. Tout s'enregistre immédiatement : aucun bouton « Enregistrer ».
 import { useEffect, useMemo, useRef, useState } from "react";
-import { PRO_STATUS_META, PRO_STATUS_ORDER } from "@/lib/proStatus";
+import { MODE_META, MODE_ORDER, modeOf, statusOfMode, type ProMode } from "@/lib/proStatus";
 import { ymd } from "../shared";
 
 type Pro = {
@@ -39,12 +40,14 @@ function addMonths(d: Date, n: number) {
 
 export default function ProDisponibilitesPage() {
   const [pro, setPro] = useState<Pro | null>(null);
+  const [mode, setMode] = useState<ProMode>("chantier");
   const [dates, setDates] = useState<string[]>([]);
   const [dispo, setDispo] = useState<Record<string, string[]>>({});
   const [month, setMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [jourOuvert, setJourOuvert] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const enAttente = useRef<Record<string, unknown>>({});
 
   useEffect(() => {
     fetch("/api/pro/me")
@@ -57,6 +60,7 @@ export default function ProDisponibilitesPage() {
       })
       .then(({ pro }) => {
         setPro(pro);
+        setMode(modeOf(pro.status)); // dernier onglet ouvert
         try {
           setDates(JSON.parse(pro.datesJson) || []);
         } catch {}
@@ -68,14 +72,21 @@ export default function ProDisponibilitesPage() {
       .catch(() => {});
   }, []);
 
-  /** Enregistre immédiatement (léger regroupement pour les taps rapprochés). */
+  /**
+   * Enregistre immédiatement (léger regroupement pour les taps rapprochés).
+   * Les patchs en attente sont FUSIONNÉS : cocher un jour puis changer d'onglet
+   * dans la foulée ne doit pas faire perdre le jour coché.
+   */
   function persist(patch: Record<string, unknown>) {
+    enAttente.current = { ...enAttente.current, ...patch };
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(async () => {
+      const body = enAttente.current;
+      enAttente.current = {};
       const res = await fetch("/api/pro/me", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(patch),
+        body: JSON.stringify(body),
       });
       if (res.ok) {
         setSaved(true);
@@ -84,12 +95,12 @@ export default function ProDisponibilitesPage() {
     }, 400);
   }
 
-  const set = (patch: Partial<Pro>) => setPro((p) => (p ? { ...p, ...patch } : p));
-
-  function changeStatus(id: string) {
-    set({ status: id });
+  /** Changer d'agenda : simple onglet, mémorisé pour la prochaine visite. */
+  function changeMode(next: ProMode) {
+    setMode(next);
     setJourOuvert(null);
-    persist({ status: id });
+    setPro((p) => (p ? { ...p, status: statusOfMode(next) } : p));
+    persist({ status: statusOfMode(next) });
   }
 
   function toggleJourChantier(d: string) {
@@ -122,9 +133,13 @@ export default function ProDisponibilitesPage() {
     return <main className="mx-auto max-w-lg px-4 py-10 text-center text-leaf-800/60">Chargement…</main>;
   }
 
-  const modeDevis = pro.status === "disponible_devis";
-  const modeChantier = pro.status === "disponible_chantier";
+  const modeDevis = mode === "devis";
+  const modeChantier = mode === "chantier";
   const slotsOuverts = jourOuvert ? dispo[jourOuvert] ?? [] : [];
+  const joursAVenir = dates.filter((d) => d >= todayStr).length;
+  const creneauxAVenir = Object.entries(dispo)
+    .filter(([d]) => d >= todayStr)
+    .reduce((n, [, s]) => n + s.length, 0);
 
   return (
     <main className="mx-auto max-w-lg px-4 py-6">
@@ -136,39 +151,49 @@ export default function ProDisponibilitesPage() {
         {saved && <span className="text-sm font-semibold text-leaf-700">✓ Enregistré</span>}
       </div>
 
-      {/* Statut : 3 choix */}
-      <section className="card space-y-2">
-        <h2 className="font-bold">Votre statut</h2>
-        <div className="grid gap-2">
-          {PRO_STATUS_ORDER.map((id) => {
-            const meta = PRO_STATUS_META[id];
-            const active = pro.status === id;
-            return (
-              <button
-                key={id}
-                type="button"
-                onClick={() => changeStatus(id)}
-                className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-left text-sm font-medium transition ${
-                  active ? "border-leaf-600 bg-leaf-50 ring-2 ring-leaf-500/25" : "border-leaf-200 bg-white"
-                }`}
-              >
-                <span className="h-3.5 w-3.5 rounded-full" style={{ background: meta.dot }} />
-                {meta.label}
-              </button>
-            );
-          })}
-        </div>
-      </section>
+      {/* Deux agendas : on choisit celui qu'on remplit. Pas de bouton
+          « indisponible » — ce qui n'est pas coché n'est pas proposé. */}
+      <div className="mb-3 grid grid-cols-2 gap-2 rounded-2xl bg-leaf-50 p-1.5">
+        {MODE_ORDER.map((id) => {
+          const meta = MODE_META[id];
+          const active = mode === id;
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => changeMode(id)}
+              className={`flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
+                active ? "bg-white shadow-sm" : "text-leaf-800/60"
+              }`}
+            >
+              <span className="h-2.5 w-2.5 rounded-full" style={{ background: meta.dot }} />
+              {meta.label}
+            </button>
+          );
+        })}
+      </div>
 
-      {pro.status === "indisponible" ? (
-        <p className="card mt-4 py-6 text-center text-sm text-leaf-800/60">
-          Vous êtes indisponible : aucun rendez-vous ne vous sera attribué.
-          <br />
-          Vos dates et créneaux sont conservés — ils réapparaîtront dès que vous
-          redeviendrez disponible.
-        </p>
-      ) : (
-        <section className="card mt-4 space-y-3">
+      <p className="mb-3 rounded-xl bg-sand-50 px-4 py-3 text-sm text-leaf-800/80">
+        Vous recevez uniquement ce que vous cochez ici. Pas besoin de vous déclarer
+        indisponible : un jour non coché n&apos;est jamais proposé aux clients.
+        {(joursAVenir > 0 || creneauxAVenir > 0) && (
+          <>
+            {" "}
+            Actuellement :{" "}
+            <b>
+              {[
+                joursAVenir ? `${joursAVenir} jour(s) de chantier` : "",
+                creneauxAVenir ? `${creneauxAVenir} créneau(x) de visite` : "",
+              ]
+                .filter(Boolean)
+                .join(" et ")}
+            </b>
+            .
+          </>
+        )}
+      </p>
+
+      <section className="card mt-4 space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="font-bold">{modeChantier ? "Mes jours de chantier" : "Mes créneaux de visite"}</h2>
             <span className="text-sm text-leaf-800/60">
@@ -309,8 +334,7 @@ export default function ProDisponibilitesPage() {
               </div>
             </div>
           )}
-        </section>
-      )}
+      </section>
     </main>
   );
 }
