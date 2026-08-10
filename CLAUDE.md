@@ -29,7 +29,7 @@ Branche de travail : `claude/landscaping-booking-platform-ejx6ap`.
 - **Anti double-booking** : Google Calendar OAuth (freeBusy en direct) + RDV
   en BDD + revérification du créneau à la soumission. Buffer trajet paramétrable.
 - **Créneaux devis des pros réservables (option B, 10 août)** : chaque pro
-  « disponible devis » déclare ses créneaux **jour par jour à la demi-heure**
+  déclare ses créneaux de visite **jour par jour à la demi-heure**
   (`Pro.devisDispoJson` : `{"2026-08-13":["10:00","17:00"]}`). Côté client,
   `getAvailability()` propose l'union horaires du gérant ∪ créneaux des pros
   à portée (un jour fermé côté gérant reste proposé si un pro a déclaré) ;
@@ -137,30 +137,42 @@ Docs : `app/ARCHITECTURE.md`.
   modifiable si autre adresse). Réservation sans compte inchangée. Fiche
   « Mes coordonnées » modifiable dans `/compte` (`PATCH /api/client/me`) :
   alerte orange tant que l'adresse manque (comptes créés avant la nouveauté).
-- **Espace professionnel** (`/pro`, inscription libre) : statut de dispo (🔵 devis
-  / 🟢 chantier / 🔴 indispo — « sous confirmation » **retiré des choix** le
-  10 août (friction inutile, décision client), gardé dans `PRO_STATUS_META`
-  pour l'affichage des anciens comptes ; code couleur unifié avec les
-  RDV : bleu = devis, vert = chantier). **Adresse de
+- **Espace professionnel** (`/pro`, inscription libre) : **plus aucun statut de
+  disponibilité** — « sous confirmation » puis « indisponible » ont été retirés
+  le 10 août (décision client : cocher un jour implique déjà de ne pas être
+  disponible le reste du temps). La dispo découle UNIQUEMENT de
+  `datesJson` (jours de chantier) et `devisDispoJson` (créneaux de visite) :
+  `prosChantier()`/`prosDevis()` ne filtrent plus sur `Pro.status`, qui ne
+  retient que le dernier onglet ouvert (champ conservé, aucune migration).
+  Ne rien cocher = ne rien recevoir. `lib/proStatus.ts` expose `MODE_META`
+  (bleu = visites, vert = chantiers), `parseDates`/`parseDispo` et
+  `dispoResume()` — c'est ce résumé (« 3 jour(s) de chantier · 12 créneau(x)
+  de visite ») que voient le gérant et le pro, à la place d'un statut
+  déclaratif. **Adresse de
   départ + rayon demandés à l'inscription** (Pro.baseAddress/basePostalCode/
   baseCity/radiusKm) pour connaître le secteur ; la section « Vos informations »
   a été retirée de `/pro`. **Espace pro restructuré (10 août) : barre latérale
   `ProNav` + `pro/layout.tsx`** (même style que l'admin, rail d'icônes sur
   mobile, absente de login/reinitialiser) avec 4 sections : `/pro` = tableau de
-  bord (tuiles cliquables Chantiers/Heures/Statut, carte « Mon prochain
-  chantier » avec Itinéraire/Appeler/« Je ne peux pas », aperçu 5 jours),
+  bord (tuiles cliquables RDV à venir/Heures/Mes dispos, carte « Mon prochain
+  chantier » (ou « Ma prochaine visite devis ») avec Itinéraire/Appeler/« Je ne
+  peux pas », aperçu 5 jours),
   `/pro/chantiers` « Chantiers & visites » (liste : ses chantiers en vert,
   ses visites devis en bleu avec badge et heure, équipe en gris ; bascule « Vue
   semaine » vers `AgendaView` sans téléphones), `/pro/pointage` (Ma journée +
-  photos), `/pro/disponibilites` **refaite (10 août)** : 3 statuts en boutons,
-  puis calendrier — mode chantier : un tap = jour disponible ; mode devis : un
-  tap ouvre le panneau du jour (créneaux 30 min 8h→19h30 + raccourcis Fin de
-  journée / Matin / Après-midi / Effacer, pastille bleue = nb de créneaux) ;
-  tout s'auto-enregistre (`PUT /api/pro/me {devisDispo}`), aucun bouton
-  Enregistrer ; indisponible conserve les données.
+  photos), `/pro/disponibilites` **refaite (10 août)** : deux onglets
+  « Visites devis » / « Chantiers », puis calendrier — onglet chantier : un tap
+  = jour disponible ; onglet devis : un tap ouvre le panneau du jour (créneaux
+  30 min 8h→19h30 + raccourcis Fin de journée / Matin / Après-midi / Effacer,
+  pastille bleue = nb de créneaux) ; tout s'auto-enregistre
+  (`PUT /api/pro/me {devisDispo}`), aucun bouton Enregistrer. Les patchs en
+  attente sont **fusionnés** (cocher un jour puis changer d'onglet dans la
+  seconde ne doit pas perdre le jour — défaut trouvé au test).
   Aides partagées dans `pro/shared.ts`. API `GET/POST /api/pro/missions`.
-  Vue gérant : onglet « Professionnels » dans `/admin` (adresse complète
-  affichée).
+  Vue gérant : onglet « Professionnels » dans `/admin` (adresse complète,
+  badge = ce qui est déclaré, jours et créneaux détaillés) ; les APIs de
+  planning envoient `devisDispoJson`, donc `AgendaView` affiche aussi les
+  jours de visite (pastille bleue) et le détail des heures déclarées.
 - **Connexion unifiée** : `/connexion` (choix particulier / professionnel).
 - **Devis manuel** (bouton « Ajouter un devis manuellement », tableau de bord
   gérant) : modale tous champs facultatifs (garde-fou « au moins une info »,
