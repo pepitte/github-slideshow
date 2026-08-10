@@ -36,6 +36,7 @@ export default function SlotPicker({
   onSelect,
   token,
   kind = "devis",
+  cp,
   chantier,
   onChantierChange,
 }: {
@@ -46,6 +47,8 @@ export default function SlotPicker({
   /** Lien d'annulation : exclut le RDV du client du calcul (report). */
   token?: string;
   kind?: "devis" | "chantier";
+  /** Code postal du client : seuls les jours couverts par un pro à portée sont proposés. */
+  cp?: string;
   /** Chantier : sélection courante (jours + formule). */
   chantier?: ChantierSelection;
   onChantierChange?: (sel: ChantierSelection) => void;
@@ -59,6 +62,7 @@ export default function SlotPicker({
     const params = new URLSearchParams();
     params.set("kind", kind);
     if (token) params.set("token", token);
+    if (cp && /^\d{5}$/.test(cp)) params.set("cp", cp);
     setDays(null);
     fetch(`/api/availability?${params.toString()}`)
       .then((r) => r.json())
@@ -68,7 +72,7 @@ export default function SlotPicker({
         if (data.days?.length) setActiveDay(data.days[0].date);
       })
       .catch(() => setError(true));
-  }, [token, kind]);
+  }, [token, kind, cp]);
 
   if (error) {
     return <p className="text-sm text-red-600">Impossible de charger les créneaux. Réessayez.</p>;

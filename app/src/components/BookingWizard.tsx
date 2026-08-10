@@ -395,6 +395,7 @@ export default function BookingWizard({
             selected={slot}
             onSelect={setSlot}
             kind={kind}
+            cp={addr.postalCode}
             chantier={chantierSel}
             onChantierChange={setChantierSel}
           />

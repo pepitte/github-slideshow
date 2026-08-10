@@ -24,7 +24,10 @@ export async function GET(req: NextRequest) {
     }
   }
   if (kind === "chantier") {
-    const days = await getChantierAvailability(settings, excludeId);
+    // ?cp= : ne proposer que les jours couverts par un pro à portée du client.
+    const cpParam = req.nextUrl.searchParams.get("cp") ?? "";
+    const cp = /^\d{5}$/.test(cpParam) ? cpParam : undefined;
+    const days = await getChantierAvailability(settings, excludeId, cp);
     return NextResponse.json({ kind, days });
   }
   const days = await getAvailability(settings, excludeId);

@@ -1,5 +1,5 @@
 // Orchestration des notifications liées à un RDV.
-import type { Booking, Settings } from "@prisma/client";
+import type { Booking, Pro, Settings } from "@prisma/client";
 import { sendSms } from "./sms";
 import { sendEmail } from "./email";
 import { buildIcs } from "./ics";
@@ -44,7 +44,8 @@ function whenLabel(booking: Booking, groupDates?: Date[]): string {
 export async function notifyOwnerNewBooking(
   booking: Booking,
   settings: Settings,
-  groupDates?: Date[]
+  groupDates?: Date[],
+  proLabel?: string
 ): Promise<void> {
   const quand = whenLabel(booking, groupDates);
   const type = booking.kind === "chantier" ? "chantier" : "devis";
@@ -71,6 +72,7 @@ export async function notifyOwnerNewBooking(
             `Email      : ${booking.email || "—"}`,
             `Adresse    : ${lieu || "—"}`,
             `Projet     : ${PROJECT_LABELS[booking.projectType] ?? booking.projectType}`,
+            proLabel ? `Attribué à : ${proLabel}` : "",
             booking.description ? `Message    : ${booking.description}` : "",
             ``,
             `Retrouvez ce rendez-vous dans votre tableau de bord.`,
@@ -93,6 +95,87 @@ export async function notifyOwnerNewBooking(
     }
   }
   await Promise.allSettled(tasks);
+}
+
+/** Formatte une liste de jours AAAA-MM-JJ en français court. */
+function joursFr(days: string[]): string {
+  return days
+    .map((d) =>
+      new Date(`${d}T12:00:00`).toLocaleDateString("fr-FR", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+      })
+    )
+    .join(", ");
+}
+
+/**
+ * Prévient un professionnel qu'un chantier vient de lui être attribué
+ * (email ; le détail complet est dans son espace, téléphone du client compris).
+ */
+export async function notifyProNewChantier(
+  pro: Pro,
+  booking: Booking,
+  days: string[],
+  settings: Settings
+): Promise<void> {
+  if (!pro.email) return;
+  const client = `${booking.firstName} ${booking.lastName}`.trim();
+  const lieu = [booking.address, `${booking.postalCode} ${booking.city}`.trim()]
+    .filter(Boolean)
+    .join(", ");
+  await sendEmail({
+    to: pro.email,
+    subject: `Nouveau chantier : ${joursFr(days)} — ${booking.city || booking.postalCode}`,
+    text: [
+      `Bonjour ${pro.name},`,
+      ``,
+      `Un chantier vient de vous être attribué :`,
+      ``,
+      `Quand      : ${joursFr(days)}, à partir de 8h00`,
+      `Client     : ${client}`,
+      `Adresse    : ${lieu}`,
+      `Projet     : ${PROJECT_LABELS[booking.projectType] ?? booking.projectType}`,
+      booking.description ? `Détails    : ${booking.description}` : "",
+      ``,
+      `Retrouvez le téléphone du client et l'itinéraire dans votre espace professionnel.`,
+      `Un empêchement ? Utilisez le bouton « Je ne peux pas » dans votre espace : le chantier sera réattribué.`,
+      ``,
+      settings.companyName,
+    ]
+      .filter(Boolean)
+      .join("\n"),
+  });
+}
+
+/**
+ * Prévient le gérant qu'un chantier a changé de mains (désistement) ou reste
+ * sans professionnel.
+ */
+export async function notifyOwnerReassign(
+  settings: Settings,
+  booking: Booking,
+  ancien: Pro,
+  nouveau: Pro | null
+): Promise<void> {
+  const to = ownerEmailOf(settings);
+  if (!to) return;
+  const quand = whenLabel(booking);
+  await sendEmail({
+    to,
+    subject: nouveau
+      ? `Chantier réattribué : ${quand}`
+      : `Chantier SANS professionnel : ${quand}`,
+    text: [
+      `${ancien.name} s'est désisté du chantier du ${quand}`,
+      `(${booking.address}, ${booking.postalCode} ${booking.city}).`,
+      ``,
+      nouveau
+        ? `Le chantier a été réattribué automatiquement à ${nouveau.name}.`
+        : `Aucun autre professionnel disponible : le chantier est À ATTRIBUER depuis votre tableau de bord.`,
+    ].join("\n"),
+  });
 }
 
 /** SMS + email de confirmation, envoyés immédiatement après la réservation.
