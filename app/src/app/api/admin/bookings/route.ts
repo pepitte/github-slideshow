@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { isAdminAuthenticated } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
 import { parisTimeToUtc } from "@/lib/dates";
+import { creerOuCompleterContact, journaliser } from "@/lib/contacts";
 
 export const dynamic = "force-dynamic";
 
@@ -141,8 +142,25 @@ export async function POST(req: NextRequest) {
     endAt = new Date(startAt.getTime() + settings.visitDurationMin * 60_000);
   }
 
+  // Fiche client : un devis saisi au téléphone doit lui aussi entrer dans la
+  // base globale, sans créer de doublon si le client y figure déjà.
+  const contact =
+    firstName || lastName || phone || email
+      ? await creerOuCompleterContact({
+          firstName,
+          lastName,
+          phone,
+          email,
+          address,
+          postalCode,
+          city,
+          origine: "phone",
+        })
+      : null;
+
   const booking = await prisma.booking.create({
     data: {
+      contactId: contact?.id ?? null,
       firstName,
       lastName,
       phone,
@@ -160,5 +178,13 @@ export async function POST(req: NextRequest) {
     },
     include: { photos: { select: { id: true, dataUrl: true } } },
   });
+  if (contact) {
+    await journaliser(
+      contact.id,
+      "devis",
+      description || "Devis créé à la main depuis le tableau de bord.",
+      { sens: "interne", auteur: "gerant" }
+    );
+  }
   return NextResponse.json({ ok: true, booking }, { status: 201 });
 }

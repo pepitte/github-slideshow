@@ -16,6 +16,7 @@ import {
   notifyProNewDevis,
 } from "@/lib/notifications";
 import { assignChantiers, assignDevis, proDeLaVisite } from "@/lib/assign";
+import { creerOuCompleterContact, journaliser } from "@/lib/contacts";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -75,10 +76,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "hors_zone" }, { status: 422 });
   }
 
-  // 2. Le créneau est-il toujours libre ? (BDD + Google Agenda)
+  // 2. Fiche client de la base globale : créée ou complétée, jamais dupliquée.
+  const contact = await creerOuCompleterContact({
+    firstName,
+    lastName,
+    phone,
+    email,
+    address,
+    postalCode,
+    city,
+    origine: "web",
+  });
+
+  // 3. Le créneau est-il toujours libre ? (BDD + Google Agenda)
   // Chantier : un ou plusieurs jours. Plusieurs jours → journée entière chacun ;
   // un seul jour → formule choisie (demi-journée 8h-12h ou journée entière).
   const commonData = {
+    contactId: contact.id,
     firstName,
     lastName,
     phone,
@@ -161,9 +175,15 @@ export async function POST(req: NextRequest) {
         : Array.from(new Set(attribution.parJour.filter((r) => r.pro).map((r) => r.pro!.name))).join(", ") +
           (nonAttribues ? ` (+ ${nonAttribues} jour(s) à attribuer)` : "");
 
+    await journaliser(
+      contact.id,
+      "rdv",
+      `Chantier réservé en ligne : ${days.length} jour(s) à partir du ${days[0].toLocaleDateString("fr-FR")}.`,
+      { sens: "entrant" }
+    );
     // SMS + email de confirmation (dates groupées si plusieurs jours) + alerte gérant
-    const confirmation = await sendConfirmation(primary, settings, days);
-    await notifyOwnerNewBooking(primary, settings, days, proLabel, confirmation);
+    const confirmationChantier = await sendConfirmation(primary, settings, days);
+    await notifyOwnerNewBooking(primary, settings, days, proLabel, confirmationChantier);
     return NextResponse.json({ id: primary.id }, { status: 201 });
   }
 
@@ -193,6 +213,12 @@ export async function POST(req: NextRequest) {
   if (proVisite) await notifyProNewDevis(proVisite, booking, settings);
 
   // 5. SMS de confirmation immédiat + email avec .ics — sans action du gérant.
+  await journaliser(
+    contact.id,
+    "rdv",
+    `Visite devis réservée en ligne le ${startAt.toLocaleDateString("fr-FR")}.`,
+    { sens: "entrant" }
+  );
   const confirmation = await sendConfirmation(booking, settings);
   // 6. Alerte au gérant : plus besoin d'ouvrir le tableau de bord. Elle signale
   //    aussi l'échec éventuel de la confirmation au client.
