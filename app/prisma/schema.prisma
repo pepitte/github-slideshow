@@ -82,6 +82,32 @@ model Settings {
   updatedAt         DateTime @updatedAt
 }
 
+// Secteur d'exploitation (Bordeaux, Béziers…). Sert à trois choses :
+//   1. la zone d'intervention — un client est couvert si AU MOINS UNE agence
+//      le couvre (préfixe de code postal OU rayon autour de l'agence) ;
+//   2. le regroupement des paysagistes pour les agendas d'équipe ;
+//   3. le filtrage des vues du gérant.
+// Tant qu'aucune agence n'existe, l'application retombe sur la zone unique
+// historique décrite dans Settings — rien ne casse pour l'existant.
+model Agence {
+  id              String   @id @default(cuid())
+  createdAt       DateTime @default(now())
+  nom             String
+  // Couleur d'identification dans les agendas
+  couleur         String   @default("#347030")
+  address         String   @default("")
+  postalCode      String   @default("")
+  city            String   @default("")
+  lat             Float?
+  lng             Float?
+  radiusKm        Int      @default(30)
+  // Préfixes ou codes postaux couverts : ["33","40"] — "33" couvre toute la Gironde
+  postalCodesJson String   @default("[]")
+  actif           Boolean  @default(true)
+  ordre           Int      @default(0)
+  pros            Pro[]
+}
+
 model Booking {
   id             String    @id @default(cuid())
   createdAt      DateTime  @default(now())
@@ -151,6 +177,9 @@ model Pro {
   baseCity       String   @default("")
   basePostalCode String   @default("")
   radiusKm       Int      @default(30)
+  // Secteur de rattachement (agenda d'équipe). Null = non rattaché.
+  agenceId       String?
+  agence         Agence?  @relation(fields: [agenceId], references: [id], onDelete: SetNull)
   // Dernier onglet ouvert dans « Mes disponibilités » (disponible_devis |
   // disponible_chantier). N'a plus d'effet sur les attributions : la
   // disponibilité découle uniquement de datesJson / devisDispoJson.
