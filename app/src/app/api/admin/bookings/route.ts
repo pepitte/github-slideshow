@@ -4,6 +4,7 @@ import { isAdminAuthenticated } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
 import { parisTimeToUtc } from "@/lib/dates";
 import { creerOuCompleterContact, journaliser } from "@/lib/contacts";
+import { affairePourRdv } from "@/lib/affaires";
 
 export const dynamic = "force-dynamic";
 
@@ -179,6 +180,7 @@ export async function POST(req: NextRequest) {
     include: { photos: { select: { id: true, dataUrl: true } } },
   });
   if (contact) {
+    await affairePourRdv({ ...booking, proId: null });
     await journaliser(
       contact.id,
       "devis",

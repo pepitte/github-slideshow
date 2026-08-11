@@ -107,6 +107,7 @@ model Agence {
   ordre           Int      @default(0)
   pros            Pro[]
   contacts        Contact[]
+  affaires        Affaire[]
 }
 
 // « Tous les clients » : la base de contacts exhaustive. Tout ce qui entre —
@@ -132,10 +133,47 @@ model Contact {
   agence       Agence?  @relation(fields: [agenceId], references: [id], onDelete: SetNull)
   notes        String   @default("")
   bookings     Booking[]
+  affaires     Affaire[]
   interactions Interaction[]
 
   @@index([phoneKey])
   @@index([email])
+}
+
+// « Affaires / Projets » : un projet commercial identifié pour un contact.
+// Un contact peut en porter PLUSIEURS (taille de haie en mars, contrat annuel
+// en juin, réaménagement l'année suivante) — c'est ce qui distingue une base
+// clients d'un simple carnet d'adresses.
+model Affaire {
+  id            String    @id @default(cuid())
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  contactId     String
+  contact       Contact   @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  intitule      String    @default("")
+  // Adresse du chantier : parfois différente de celle du contact.
+  address       String    @default("")
+  postalCode    String    @default("")
+  city          String    @default("")
+  projectType   String    @default("autre")
+  description   String    @default("")
+  // Étape du pipeline (voir lib/pipeline.ts). « perdu » exige un motif.
+  statut        String    @default("nouvelle")
+  motifPerte    String    @default("")
+  // Montant estimé puis réel (repris du devis chiffré).
+  montant       Float?
+  // Date de la prochaine action à mener : le champ qui empêche une affaire
+  // de mourir en silence.
+  prochaineActionAt DateTime?
+  agenceId      String?
+  agence        Agence?   @relation(fields: [agenceId], references: [id], onDelete: SetNull)
+  proId         String?
+  pro           Pro?      @relation(fields: [proId], references: [id], onDelete: SetNull)
+  bookings      Booking[]
+  documents     Document[]
+
+  @@index([statut])
+  @@index([contactId])
 }
 
 // Journal des échanges d'un contact : appels, emails, SMS, notes libres.
@@ -172,6 +210,9 @@ model Booking {
   // par le RDV (adresse du chantier, qui peut différer de celle du contact).
   contactId      String?
   contact        Contact?  @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  // Affaire commerciale dont ce rendez-vous fait partie.
+  affaireId      String?
+  affaire        Affaire?  @relation(fields: [affaireId], references: [id], onDelete: SetNull)
   kind           String    @default("devis") // devis | chantier
   // web = réservé sur le site ; manual = créé à la main par le gérant
   source         String    @default("web")
@@ -252,6 +293,7 @@ model Pro {
   updatedAt      DateTime @updatedAt
   workEntries    WorkEntry[]
   bookings       Booking[]
+  affaires       Affaire[]
 }
 
 // Pointage terrain d'un professionnel : une ligne par jour (heure de Paris).
@@ -308,6 +350,9 @@ model Document {
   notes         String   @default("")
   // devis : brouillon | envoye | accepte | refuse — facture : a_payer | payee
   status        String   @default("brouillon")
+  // Affaire à laquelle ce devis ou cette facture se rapporte.
+  affaireId     String?
+  affaire       Affaire? @relation(fields: [affaireId], references: [id], onDelete: SetNull)
   updatedAt     DateTime @updatedAt
 }
 

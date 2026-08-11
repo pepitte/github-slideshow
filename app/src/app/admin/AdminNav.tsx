@@ -64,6 +64,12 @@ const ICONS: Record<string, JSX.Element> = {
       <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
     </svg>
   ),
+  affaires: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 shrink-0">
+      <rect x="2" y="7" width="20" height="14" rx="2" />
+      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+    </svg>
+  ),
   logout: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 shrink-0">
       <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
@@ -75,6 +81,7 @@ const ICONS: Record<string, JSX.Element> = {
 const LINKS = [
   { href: "/admin", label: "Tableau de bord", icon: "dashboard" },
   { href: "/admin/clients", label: "Tous les clients", icon: "clients" },
+  { href: "/admin/affaires", label: "Affaires", icon: "affaires" },
   { href: "/admin/planning", label: "Agenda", icon: "agenda" },
   { href: "/admin/terrain", label: "Gestion terrain", icon: "terrain" },
   { href: "/admin/stats", label: "Statistiques", icon: "stats" },

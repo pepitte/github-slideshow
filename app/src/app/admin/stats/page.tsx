@@ -11,6 +11,15 @@ type Stats = {
   weeks: Week[];
   months: Month[];
   statuses: Record<string, number>;
+  crm: {
+    contacts: number;
+    affaires: number;
+    actives: number;
+    gagnees: number;
+    perdues: number;
+    taux: number | null;
+    pipelineMontant: number;
+  };
   totals: {
     bookings: number;
     upcoming: number;
@@ -103,6 +112,42 @@ export default function AdminStatsPage() {
     <main className="mx-auto max-w-4xl px-4 py-6">
       <h1 className="text-xl font-bold">Statistiques</h1>
       <p className="mb-5 text-sm text-leaf-800/60">Activité des 12 dernières semaines et facturation de l&apos;année.</p>
+
+      {/* Entonnoir : ce qui entre, ce qui devient un projet, ce qui se signe */}
+      {stats.crm.affaires > 0 && (
+        <section className="card mb-6">
+          <h2 className="mb-1 font-bold">De la demande au chantier</h2>
+          <p className="mb-3 text-sm text-leaf-800/60">
+            Toutes les demandes reçues ne deviennent pas des projets — voici où elles vont.
+          </p>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <Tile
+              label="Clients en base"
+              value={String(stats.crm.contacts)}
+              hint="Tous les contacts entrants"
+            />
+            <Tile
+              label="Projets engagés"
+              value={String(stats.crm.affaires)}
+              hint={`${stats.crm.actives} encore en cours`}
+            />
+            <Tile
+              label="Taux de transformation"
+              value={stats.crm.taux === null ? "—" : `${stats.crm.taux} %`}
+              hint={
+                stats.crm.gagnees + stats.crm.perdues
+                  ? `${stats.crm.gagnees} gagnées sur ${stats.crm.gagnees + stats.crm.perdues} décidées`
+                  : "Aucune affaire encore décidée"
+              }
+            />
+            <Tile
+              label="En jeu"
+              value={euros(stats.crm.pipelineMontant)}
+              hint="Montant des affaires en cours"
+            />
+          </div>
+        </section>
+      )}
 
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Tile
