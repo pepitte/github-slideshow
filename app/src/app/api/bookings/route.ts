@@ -17,6 +17,7 @@ import {
 } from "@/lib/notifications";
 import { assignChantiers, assignDevis, proDeLaVisite } from "@/lib/assign";
 import { creerOuCompleterContact, journaliser } from "@/lib/contacts";
+import { affairePourRdv } from "@/lib/affaires";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -175,6 +176,8 @@ export async function POST(req: NextRequest) {
         : Array.from(new Set(attribution.parJour.filter((r) => r.pro).map((r) => r.pro!.name))).join(", ") +
           (nonAttribues ? ` (+ ${nonAttribues} jour(s) à attribuer)` : "");
 
+    // L'affaire commerciale : ouverte si le client n'en a pas déjà une.
+    await affairePourRdv({ ...primary, proId: attribution.parJour[0]?.pro?.id ?? null });
     await journaliser(
       contact.id,
       "rdv",
@@ -213,6 +216,7 @@ export async function POST(req: NextRequest) {
   if (proVisite) await notifyProNewDevis(proVisite, booking, settings);
 
   // 5. SMS de confirmation immédiat + email avec .ics — sans action du gérant.
+  await affairePourRdv({ ...booking, proId: proVisite?.id ?? null });
   await journaliser(
     contact.id,
     "rdv",

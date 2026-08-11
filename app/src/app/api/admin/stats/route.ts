@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isAdminAuthenticated } from "@/lib/auth";
+import { estActive, estGagnee, estPerdue } from "@/lib/pipeline";
 import { itemsOf, totalHt } from "@/lib/documents";
 import { todayParis, addDaysStr, utcToParis } from "@/lib/dates";
 
@@ -107,10 +108,35 @@ export async function GET() {
     .filter((m) => m.month.startsWith(today.slice(0, 4)))
     .reduce((acc, m) => acc + m.facture, 0);
 
+  // Entonnoir CRM : combien de demandes reçues, combien de projets réellement
+  // engagés, et quel taux de transformation sur les seules affaires décidées.
+  const contactsTotal = await prisma.contact.count();
+  const affaires = await prisma.affaire.findMany({ select: { statut: true, montant: true } });
+  const affairesGagnees = affaires.filter((a) => estGagnee(a.statut)).length;
+  const affairesPerdues = affaires.filter((a) => estPerdue(a.statut)).length;
+  const affairesActives = affaires.filter((a) => estActive(a.statut)).length;
+  const affairesDecidees = affairesGagnees + affairesPerdues;
+  const tauxAffaires = affairesDecidees
+    ? Math.round((affairesGagnees / affairesDecidees) * 100)
+    : null;
+  // Valeur du pipeline : ce qui est encore en jeu.
+  const pipelineMontant = affaires
+    .filter((a) => estActive(a.statut))
+    .reduce((acc, a) => acc + (a.montant ?? 0), 0);
+
   return NextResponse.json({
     weeks,
     months,
     statuses,
+    crm: {
+      contacts: contactsTotal,
+      affaires: affaires.length,
+      actives: affairesActives,
+      gagnees: affairesGagnees,
+      perdues: affairesPerdues,
+      taux: tauxAffaires,
+      pipelineMontant,
+    },
     totals: {
       bookings: bookings.length,
       upcoming,
