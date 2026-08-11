@@ -70,6 +70,35 @@ Branche de travail : `claude/landscaping-booking-platform-ejx6ap`.
   sans contrainte unique.
 - **Zone d'intervention** : codes postaux (préfixe accepté) ou rayon km ;
   hors zone → message + formulaire de contact (Lead).
+- **CRM (11 août, plan en 4 phases — note d'architecture publiée en artifact)** :
+  - **`Agence`** = secteur d'exploitation (Bordeaux, Béziers…). `checkZone`
+    accepte si **au moins une** agence couvre le client (préfixe CP ou rayon,
+    coordonnées déduites de `cp-gps.json`, aucun service externe). Sans agence,
+    repli sur la zone unique historique. Gestion dans les paramètres ; les pros
+    y sont rattachés (`Pro.agenceId`) à l'inscription ou par le gérant.
+    **Sans cela un client bordelais était refusé « hors zone »** (préfixe 34).
+  - **`Contact` + `Interaction`** (`/admin/clients`) : la base « Tous les
+    clients », alimentée par TOUS les points d'entrée (réservation, formulaire,
+    Meta, devis manuel, ajout à la main). Dédoublonnage sur `phoneKey`
+    (téléphone normalisé) puis email ; jamais sur le nom seul. Reprise de
+    l'existant rejouable (`POST /api/admin/contacts/reprise`). Fiche avec RDV
+    liés + journal des échanges.
+  - **`Affaire`** (`/admin/affaires`) : le pipeline. 11 étapes en 3 bandes
+    (`lib/pipeline.ts`), **« refusé / pas intéressé / pas de réponse » sont des
+    `motifPerte`, pas des étapes** (sinon colonnes mortes + pertes incomptables) ;
+    motif obligatoire au passage en perdu. `prochaineActionAt` = le champ qui
+    empêche une affaire de mourir en silence. **Un contact porte N affaires** :
+    une visite devis ne rejoint qu'une affaire encore commerciale, un chantier
+    peut rejoindre une affaire en exécution. « Annulé » est exclu du taux de
+    transformation. Reprise : RDV du même client à <90 j = une affaire.
+  - **`Absence`** (pro : `du`/`au`/`motif`) : bloque l'attribution auto et
+    s'affiche grisée, contrairement à un jour non coché.
+  - **Agenda d'équipe** (`/admin/equipe`) : une colonne par paysagiste, vue
+    Jour, secteur mémorisé (localStorage), **bouton « Premiers créneaux
+    libres »** à partir du CP client (`/api/admin/equipe/creneaux`, même moteur
+    que le tunnel public). Les horaires personnels du gérant ne sont proposés
+    que dans le secteur de son adresse de base (`gerantCouvre()`) — sinon on
+    promettait une visite à 348 km.
 - **Espace admin** (`/admin`) : dashboard RDV avec statuts (à faire / devis
   envoyé / gagné / perdu / annulé), paramètres (horaires, congés, zone, durées,
   textes SMS/email, logo, photos de réalisations), connexion Google en 1 clic.
@@ -241,7 +270,8 @@ Docs : `app/ARCHITECTURE.md`.
   (gagnés + perdus). Graphiques en CSS pur (aucune librairie), couleurs
   #2563eb / #16a34a validées pour le daltonisme.
 - **Espace gérant** : barre latérale gauche (layout `/admin`, composant AdminNav)
-  avec logo, icônes SVG (Tableau de bord, Agenda, Gestion terrain, Statistiques,
+  avec logo, icônes SVG (Tableau de bord, Tous les clients, Affaires, Agenda,
+  Agenda d'équipe, Gestion terrain, Statistiques, Publicités Meta,
   Devis & Factures, Professionnels, Paramètres) et Déconnexion en bas ; rail d'icônes seul sur
   mobile ; absente de `/admin/login`. Inspirée de la maquette du client.
   Tableau de bord : **recherche** (nom, tel, email, ville, CP, adresse,
@@ -266,6 +296,13 @@ Docs : `app/ARCHITECTURE.md`.
   3 échecs → 429 « Trop de tentatives » pendant 15 min, remise à zéro au succès.
 - **Déploiement** : Vercel plan Hobby (cron rappels 1×/jour à 6h UTC). Fusion des
   PR vers `main` via l'outil GitHub (le client n'a pas à le faire) → redeploy auto.
+
+## Note d'architecture CRM
+
+Évaluation métier + plan en 4 phases, publiée pour le client :
+https://claude.ai/code/artifact/a0075bcb-6ee0-4e97-a5e0-76055b377638
+Source : `crm-architecture.html` dans le scratchpad de session.
+**Les 4 phases ont été implémentées** (PR #49, #50, #51, #52).
 
 ## Démo interactive (artifact)
 
