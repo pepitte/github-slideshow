@@ -8,6 +8,7 @@
 import crypto from "crypto";
 import type { Settings } from "@prisma/client";
 import { prisma } from "./prisma";
+import { creerOuCompleterContact, journaliser, splitNom } from "./contacts";
 
 const GRAPH = "https://graph.facebook.com/v21.0";
 
@@ -193,5 +194,21 @@ export async function saveLead(parsed: ReturnType<typeof parseLead>): Promise<bo
   await prisma.lead.create({
     data: { ...rest, source: "meta", ...(createdAt ? { createdAt } : {}) },
   });
+  // Les prospects publicitaires entrent aussi dans la base globale.
+  const contact = await creerOuCompleterContact({
+    ...splitNom(rest.name),
+    phone: rest.phone,
+    email: rest.email,
+    postalCode: rest.postalCode,
+    origine: "meta",
+  });
+  await journaliser(
+    contact.id,
+    "note",
+    [rest.message, rest.adName && `Publicité : ${rest.adName}`, rest.campaign && `Campagne : ${rest.campaign}`]
+      .filter(Boolean)
+      .join("\n") || "Prospect issu d'une publicité.",
+    { sens: "entrant" }
+  );
   return true;
 }
