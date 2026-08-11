@@ -3,6 +3,7 @@
 // Paramètres gérant : entreprise, Google Agenda, horaires, zones, messages.
 import { useEffect, useRef, useState } from "react";
 import PhotoUpload from "@/components/PhotoUpload";
+import AgencesSection from "./AgencesSection";
 
 /** Redimensionne le logo côté client (max 600 px de large, PNG). */
 async function fileToLogoDataUrl(file: File): Promise<string> {
@@ -306,7 +307,9 @@ export default function AdminSettingsPage() {
           <PhotoUpload photos={gallery} onChange={updateGallery} label="6 photos maximum" maxPhotos={6} />
         </section>
 
-        {/* Zone d'intervention */}
+        <AgencesSection />
+
+        {/* Zone d'intervention (repli si aucun secteur) */}
         <section className="card space-y-3">
           <h2 className="font-bold">Zone d&apos;intervention</h2>
           <div className="flex gap-2">

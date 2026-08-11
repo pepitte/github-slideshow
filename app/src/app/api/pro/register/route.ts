@@ -25,6 +25,7 @@ export async function POST(req: NextRequest) {
   const postalCode = String(body.postalCode ?? "").trim();
   const city = String(body.city ?? "").trim();
   const radiusKm = Math.max(0, Math.min(200, Number(body.radiusKm) || 30));
+  const agenceId = String(body.agenceId ?? "").trim() || null;
 
   if (!name || !/.+@.+\..+/.test(email) || password.length < 6) {
     return NextResponse.json(
@@ -51,6 +52,8 @@ export async function POST(req: NextRequest) {
       basePostalCode: postalCode,
       baseCity: city,
       radiusKm,
+      // Secteur choisi à l'inscription (Bordeaux, Béziers…), s'il en existe.
+      agenceId: agenceId && (await prisma.agence.findUnique({ where: { id: agenceId } })) ? agenceId : null,
       passwordHash: hashPassword(password),
     },
   });

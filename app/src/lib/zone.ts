@@ -1,5 +1,7 @@
 import type { Settings } from "@prisma/client";
 import { parsePostalCodes } from "./settings";
+import { agencesActives, couvertureDe } from "./agences";
+import { cpToLatLng } from "./geo";
 
 export type ZoneResult = { covered: boolean; reason?: string };
 
@@ -35,6 +37,13 @@ function haversineKm(a: { lat: number; lng: number }, b: { lat: number; lng: num
 
 /**
  * Vérifie si une adresse/code postal est dans la zone d'intervention.
+ *
+ * Dès qu'au moins une agence existe, c'est elle qui fait foi : le client est
+ * couvert si N'IMPORTE QUELLE agence le couvre (liste de codes postaux ou
+ * rayon). C'est ce qui permet d'exploiter plusieurs secteurs éloignés —
+ * Bordeaux et Béziers — sans que l'un exclue l'autre.
+ *
+ * Sans agence, on retombe sur la zone unique historique :
  * - mode "postal" : le code postal doit figurer dans la liste (préfixe accepté, ex. "44" couvre tout le 44)
  * - mode "radius" : distance à vol d'oiseau depuis l'adresse de base <= rayon
  */
@@ -42,9 +51,24 @@ export async function checkZone(
   settings: Settings,
   postalCode: string,
   fullAddress?: string
-): Promise<ZoneResult & { lat?: number; lng?: number }> {
+): Promise<ZoneResult & { lat?: number; lng?: number; agenceId?: string }> {
   const cp = postalCode.trim();
   if (!/^\d{5}$/.test(cp)) return { covered: false, reason: "code_postal_invalide" };
+
+  const agences = await agencesActives();
+  if (agences.length > 0) {
+    const couvrantes = agences
+      .map((a) => couvertureDe(a, cp))
+      .filter((c) => c.raison !== null)
+      .sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
+    if (couvrantes.length === 0) return { covered: false, reason: "hors_zone" };
+    const pos = cpToLatLng(cp);
+    return {
+      covered: true,
+      agenceId: couvrantes[0].agence.id,
+      ...(pos ? { lat: pos.lat, lng: pos.lng } : {}),
+    };
+  }
 
   if (settings.zoneMode === "radius" && settings.baseLat != null && settings.baseLng != null) {
     const point = fullAddress ? await geocode(fullAddress) : null;

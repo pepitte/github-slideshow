@@ -1,7 +1,7 @@
 "use client";
 
 // Connexion / inscription libre des professionnels.
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import AddressAutocomplete, { type AddressValue } from "@/components/AddressAutocomplete";
 
@@ -13,9 +13,19 @@ export default function ProLoginPage() {
   const [phone, setPhone] = useState("");
   const [addr, setAddr] = useState<AddressValue>({ address: "", postalCode: "", city: "" });
   const [radiusKm, setRadiusKm] = useState(30);
+  // Secteurs proposés à l'inscription (Bordeaux, Béziers…), s'il en existe.
+  const [agences, setAgences] = useState<{ id: string; nom: string; city: string }[]>([]);
+  const [agenceId, setAgenceId] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    fetch("/api/agences")
+      .then((r) => (r.ok ? r.json() : { agences: [] }))
+      .then((d) => setAgences(d.agences ?? []))
+      .catch(() => {});
+  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -35,6 +45,7 @@ export default function ProLoginPage() {
           postalCode: addr.postalCode,
           city: addr.city,
           radiusKm,
+          agenceId,
         }),
       });
       const data = await res.json();
@@ -97,6 +108,29 @@ export default function ProLoginPage() {
             <p className="-mt-1 text-xs text-leaf-800/60">
               Elle indique votre secteur d&apos;intervention au gérant.
             </p>
+            {agences.length > 0 && (
+              <div>
+                <label className="label" htmlFor="agence">Secteur *</label>
+                <select
+                  id="agence"
+                  className="input"
+                  value={agenceId}
+                  onChange={(e) => setAgenceId(e.target.value)}
+                  required
+                >
+                  <option value="">— Choisissez votre secteur —</option>
+                  {agences.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.nom}
+                      {a.city ? ` (${a.city})` : ""}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-leaf-800/60">
+                  L&apos;équipe à laquelle vous êtes rattaché, pour l&apos;agenda partagé.
+                </p>
+              </div>
+            )}
             <div>
               <label className="label" htmlFor="radius">Rayon d&apos;intervention (km)</label>
               <input

@@ -14,6 +14,7 @@ type Pro = {
   basePostalCode: string;
   radiusKm: number;
   availableDays: number;
+  agenceId: string | null;
   datesJson: string;
   devisDispoJson: string;
   note: string;
@@ -39,8 +40,11 @@ function fmtCreneaux(json: string, days: string[]): string {
     .join(" | ") + (days.length > 4 ? `… (+${days.length - 4} jour(s))` : "");
 }
 
+type AgenceLite = { id: string; nom: string; couleur: string };
+
 export default function AdminProsPage() {
   const [pros, setPros] = useState<Pro[]>([]);
+  const [agences, setAgences] = useState<AgenceLite[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -63,7 +67,21 @@ export default function AdminProsPage() {
       })
       .then((data) => setPros(data.pros ?? []))
       .finally(() => setLoading(false));
+    fetch("/api/admin/agences")
+      .then((r) => (r.ok ? r.json() : { agences: [] }))
+      .then((d) => setAgences(d.agences ?? []))
+      .catch(() => {});
   }, []);
+
+  /** Rattacher un paysagiste à un secteur (agenda d'équipe). */
+  async function changerAgence(id: string, agenceId: string) {
+    setPros((list) => list.map((p) => (p.id === id ? { ...p, agenceId: agenceId || null } : p)));
+    await fetch(`/api/admin/pros/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ agenceId }),
+    });
+  }
 
   // « Disponible » = a réellement coché quelque chose à venir dans son agenda.
   const today = new Date().toISOString().slice(0, 10);
@@ -121,6 +139,21 @@ export default function AdminProsPage() {
                   {" · "}
                   <a className="text-leaf-700 underline" href={`mailto:${p.email}`}>{p.email}</a>
                 </p>
+                {agences.length > 0 && (
+                  <p className="flex flex-wrap items-center gap-2">
+                    <span className="text-leaf-800/60">Secteur :</span>
+                    <select
+                      className="input !w-auto !py-1 text-sm"
+                      value={p.agenceId ?? ""}
+                      onChange={(e) => changerAgence(p.id, e.target.value)}
+                    >
+                      <option value="">— Non rattaché —</option>
+                      {agences.map((a) => (
+                        <option key={a.id} value={a.id}>{a.nom}</option>
+                      ))}
+                    </select>
+                  </p>
+                )}
                 <p className="text-leaf-800/70">{resume.detail}</p>
                 <p>Jours de chantier : {fmtJours(resume.jours)}</p>
                 <p>Créneaux de visite : {fmtCreneaux(p.devisDispoJson, resume.joursDevis)}</p>
