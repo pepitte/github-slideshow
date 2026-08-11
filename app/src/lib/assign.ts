@@ -12,6 +12,7 @@ import { prisma } from "./prisma";
 import { cpToLatLng, distanceKm } from "./geo";
 import { utcToParis } from "./dates";
 import { parseDates, parseDispo } from "./proStatus";
+import { joursAbsents } from "./absences";
 
 export { parseDispo };
 
@@ -86,9 +87,18 @@ async function chargeSemaine(day: string): Promise<Map<string, number>> {
  * Tous les pros, avec les jours de chantier qu'ils ont cochés. Ne rien cocher
  * = ne rien recevoir : c'est la seule façon de se déclarer indisponible.
  */
-export async function prosChantier(): Promise<(Pro & { jours: string[] })[]> {
+export async function prosChantier(): Promise<(Pro & { jours: string[]; absents: Set<string> })[]> {
   const pros = await prisma.pro.findMany();
-  return pros.map((p) => Object.assign(p, { jours: parseDates(p.datesJson) }));
+  const tousJours = pros.flatMap((p) => parseDates(p.datesJson)).sort();
+  const absences = tousJours.length
+    ? await joursAbsents(tousJours[0], tousJours[tousJours.length - 1])
+    : new Map<string, Set<string>>();
+  return pros.map((p) =>
+    Object.assign(p, {
+      jours: parseDates(p.datesJson),
+      absents: absences.get(p.id) ?? new Set<string>(),
+    })
+  );
 }
 
 /**
@@ -96,7 +106,7 @@ export async function prosChantier(): Promise<(Pro & { jours: string[] })[]> {
  * `busy` : jours déjà pris par pro (précalculé) ; `exclude` : pros écartés (désistés).
  */
 export function rankCandidates(
-  pros: (Pro & { jours: string[] })[],
+  pros: (Pro & { jours: string[]; absents?: Set<string> })[],
   day: string,
   clientCp: string,
   busy: Map<string, Set<string>>,
@@ -111,6 +121,8 @@ export function rankCandidates(
     if (clientPos && proPos) c.distance = Math.round(distanceKm(clientPos, proPos) * 10) / 10;
     if (exclude.includes(pro.id)) {
       c.raison = "s'est désisté";
+    } else if (pro.absents?.has(day)) {
+      c.raison = "absent (congés ou indisponibilité déclarée)";
     } else if (!pro.jours.includes(day)) {
       c.raison = "pas disponible ce jour";
     } else if (busy.get(pro.id)?.has(day)) {
@@ -201,7 +213,17 @@ export async function assignChantiers(
 /** Tous les pros, avec les créneaux de visite qu'ils ont déclarés jour par jour. */
 export async function prosDevis(): Promise<(Pro & { dispo: Record<string, string[]> })[]> {
   const pros = await prisma.pro.findMany();
-  return pros.map((p) => Object.assign(p, { dispo: parseDispo(p.devisDispoJson) }));
+  const jours = pros.flatMap((p) => Object.keys(parseDispo(p.devisDispoJson))).sort();
+  const absences = jours.length
+    ? await joursAbsents(jours[0], jours[jours.length - 1])
+    : new Map<string, Set<string>>();
+  return pros.map((p) => {
+    const absents = absences.get(p.id);
+    const dispo = parseDispo(p.devisDispoJson);
+    // Une visite ne peut pas être proposée un jour d'absence déclarée.
+    if (absents) for (const j of Array.from(absents)) delete dispo[j];
+    return Object.assign(p, { dispo });
+  });
 }
 
 /** Visites devis déjà attribuées, par pro : Set de « AAAA-MM-JJ HH:mm ». */
@@ -330,6 +352,7 @@ export async function joursAvecCapacite(
   for (const day of tousJours) {
     for (const pro of pros) {
       if (!pro.jours.includes(day)) continue;
+      if (pro.absents.has(day)) continue;
       if (busy.get(pro.id)?.has(day)) continue;
       if (clientPos) {
         const proPos = cpToLatLng(pro.basePostalCode);

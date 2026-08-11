@@ -294,6 +294,26 @@ model Pro {
   workEntries    WorkEntry[]
   bookings       Booking[]
   affaires       Affaire[]
+  absences       Absence[]
+}
+
+// Absence d'un professionnel : congés, arrêt, formation… Contrairement à un
+// jour simplement non coché — qu'on ne peut pas distinguer d'un planning pas
+// encore rempli — une absence bloque l'attribution automatique et s'affiche
+// dans tous les agendas.
+model Absence {
+  id      String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  proId   String
+  pro     Pro      @relation(fields: [proId], references: [id], onDelete: Cascade)
+  // Bornes incluses, au format AAAA-MM-JJ (heure de Paris).
+  du      String
+  au      String
+  // conges | arret | formation | personnel
+  motif   String   @default("conges")
+  note    String   @default("")
+
+  @@index([proId, du])
 }
 
 // Pointage terrain d'un professionnel : une ligne par jour (heure de Paris).
