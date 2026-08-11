@@ -6,6 +6,21 @@ import { getBusyPeriods } from "./google";
 import { parseOpeningHours, parseChantierHours, parseDaysOff } from "./settings";
 import { parisTimeToUtc, utcToParis, addDaysStr, todayParis } from "./dates";
 import { joursAvecCapacite, creneauxDevisPros } from "./assign";
+import { agencesActives, couvertureDe } from "./agences";
+
+/**
+ * Le gérant fait lui-même les visites, mais depuis SON secteur. Dès que
+ * plusieurs secteurs existent, ses horaires ne doivent plus être proposés à un
+ * client d'une autre ville — sinon on promet une visite à 350 km.
+ */
+async function gerantCouvre(settings: Settings, clientCp?: string): Promise<boolean> {
+  if (!clientCp) return true;
+  const agences = await agencesActives();
+  if (agences.length === 0) return true; // zone unique : comportement historique
+  const sienne = agences.find((a) => couvertureDe(a, settings.basePostalCode).raison !== null);
+  if (!sienne) return true; // gérant hors secteurs : on ne le bride pas
+  return couvertureDe(sienne, clientCp).raison !== null;
+}
 
 export type DaySlots = { date: string; slots: string[] }; // slots = ISO UTC des débuts
 export type BookingKind = "devis" | "chantier";
@@ -70,9 +85,10 @@ export async function getAvailability(
   const rangeEnd = parisTimeToUtc(addDaysStr(startDay, settings.maxDaysAhead), "23:59");
   // Créneaux du gérant (horaires d'ouverture, agenda Google) ∪ créneaux déclarés
   // par les pros (jour par jour, trous en journée compris) : option B du client.
-  const [busy, prosSlots] = await Promise.all([
+  const [busy, prosSlots, gerantDispo] = await Promise.all([
     getBusy(settings, rangeStart, rangeEnd, excludeBookingId),
     creneauxDevisPros(clientCp, excludeBookingId),
+    gerantCouvre(settings, clientCp),
   ]);
 
   const minStart = new Date(Date.now() + settings.minNoticeHours * 3600_000);
@@ -84,7 +100,7 @@ export async function getAvailability(
     const rawConfig = openingHours[String(weekday)];
     const hasProSlots = (prosSlots.get(dateStr)?.size ?? 0) > 0;
     // Jour fermé côté gérant : reste proposé si un pro a déclaré des créneaux.
-    if (!rawConfig?.enabled && !hasProSlots) continue;
+    if ((!rawConfig?.enabled || !gerantDispo) && !hasProSlots) continue;
     if (daysOff.some((d) => dateStr >= d.from && dateStr <= d.to)) continue;
     const dayConfig = rawConfig?.enabled ? rawConfig : { enabled: false, start: "00:00", end: "00:00" };
 
@@ -93,8 +109,9 @@ export async function getAvailability(
     const slots = new Set<string>();
 
     // 1. Créneaux du gérant : horaires d'ouverture, moins l'agenda occupé.
+    //    Ignorés si le client est dans un secteur que le gérant ne couvre pas.
     for (
-      let t = dayStart.getTime();
+      let t = gerantDispo ? dayStart.getTime() : dayEnd.getTime();
       t + duration * 60_000 <= dayEnd.getTime();
       t += step * 60_000
     ) {

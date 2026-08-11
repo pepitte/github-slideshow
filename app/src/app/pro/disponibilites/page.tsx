@@ -9,6 +9,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MODE_META, MODE_ORDER, modeOf, statusOfMode, type ProMode } from "@/lib/proStatus";
 import { ymd } from "../shared";
+import Absences from "./Absences";
 
 type Pro = {
   name: string;
@@ -335,6 +336,8 @@ export default function ProDisponibilitesPage() {
             </div>
           )}
       </section>
+
+      <Absences />
     </main>
   );
 }
