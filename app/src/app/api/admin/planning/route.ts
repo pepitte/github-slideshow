@@ -52,6 +52,9 @@ export async function GET(req: NextRequest) {
         endAt: true,
         status: true,
         groupId: true,
+        proId: true,
+        // Montant de l'affaire : ce que rapporte l'intervention, affiché au gérant.
+        affaire: { select: { montant: true } },
       },
     }),
     prisma.pro.findMany({

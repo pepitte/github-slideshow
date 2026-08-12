@@ -50,6 +50,7 @@ export async function GET(req: NextRequest) {
         endAt: true,
         status: true,
         groupId: true,
+        proId: true,
       },
     }),
     prisma.pro.findMany({
