@@ -1,118 +1,217 @@
 "use client";
 
-// Tableau de bord gérant : RDV à venir, détails prospects, photos, statuts.
+// Tableau de bord : la vue d'ensemble. Trois chiffres du moment, l'évolution du
+// chiffre d'affaires, les demandes que personne n'a encore traitées et les
+// prochains rendez-vous. La liste de travail complète est sur /admin/rendez-vous.
 import { useEffect, useState } from "react";
-import ManualBookingModal from "./ManualBookingModal";
-import PhotoUpload from "@/components/PhotoUpload";
-import { parseDates } from "@/lib/proStatus";
+import Link from "next/link";
+import { ORIGINES } from "@/lib/contactLabels";
 
-type Photo = { id: string; dataUrl: string };
-type Booking = {
+type Tuiles = {
+  nouveauxCeMois: number;
+  nouveauxMoisPrec: number;
+  evolution: number | null;
+  caMois: number;
+  chantiersSemaine: number;
+};
+type Mois = { mois: string; ca: number };
+type ATraiter = {
   id: string;
   firstName: string;
   lastName: string;
-  phone: string;
-  email: string;
-  address: string;
-  postalCode: string;
+  origine: string;
   city: string;
+  createdAt: string;
+  notes: string;
+  jours: number;
+};
+type Prochain = {
+  id: string;
   kind: string;
-  source: string;
-  projectType: string;
-  description: string;
+  firstName: string;
+  lastName: string;
+  city: string;
   startAt: string | null;
   endAt: string | null;
-  status: string;
-  proId: string | null;
   pro: { id: string; name: string } | null;
-  photosCount: number;
-};
-type ProLite = {
-  id: string;
-  name: string;
-  basePostalCode: string;
-  radiusKm: number;
-  datesJson: string;
 };
 
-/** Jour de Paris (AAAA-MM-JJ) d'une date ISO. */
-function parisDay(iso: string): string {
-  return new Intl.DateTimeFormat("fr-CA", {
-    timeZone: "Europe/Paris",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date(iso));
+function euros(n: number): string {
+  return n.toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
 }
-
-/** Libellé de la formule chantier, déduit des heures (fin à 12h = demi-journée). */
-function chantierLabel(b: Booking): string {
-  if (!b.endAt) return "";
-  const endH = new Date(b.endAt).toLocaleTimeString("fr-FR", {
-    timeZone: "Europe/Paris",
-    hour: "2-digit",
-    minute: "2-digit",
+function moisCourt(ym: string): string {
+  const [y, m] = ym.split("-").map(Number);
+  const l = new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString("fr-FR", {
+    month: "long",
+    timeZone: "UTC",
   });
-  return endH === "12:00" ? "Demi-journée (8h-12h)" : `Journée entière (8h → ${endH.replace(":", "h")})`;
+  return l.charAt(0).toUpperCase() + l.slice(1);
 }
-type Lead = { id: string; name: string; phone: string; email: string; postalCode: string; message: string; createdAt: string };
-
-const STATUS_OPTIONS = [
-  { id: "a_faire", label: "À faire", color: "bg-amber-100 text-amber-800" },
-  { id: "devis_envoye", label: "Devis envoyé", color: "bg-blue-100 text-blue-800" },
-  { id: "gagne", label: "Gagné", color: "bg-leaf-100 text-leaf-800" },
-  { id: "perdu", label: "Perdu", color: "bg-gray-200 text-gray-700" },
-  { id: "annule", label: "Annulé", color: "bg-red-100 text-red-700" },
-];
-
-const PROJECT_LABELS: Record<string, string> = {
-  entretien: "Entretien de jardin général",
-  taille_haie: "Taille de haie",
-  debroussaillage: "Débroussaillage",
-  contrat_annuel: "Contrat d'entretien à l'année",
-  autre: "Autre",
-};
-
-function fmt(dateIso: string | null): string {
-  if (!dateIso) return "Sans date";
-  return new Date(dateIso).toLocaleString("fr-FR", {
+function initiales(prenom: string, nom: string): string {
+  const a = (prenom || "").trim()[0] ?? "";
+  const b = (nom || "").trim()[0] ?? "";
+  return (a + b).toUpperCase() || "?";
+}
+function heure(iso: string | null): string {
+  if (!iso) return "";
+  return new Date(iso)
+    .toLocaleTimeString("fr-FR", { timeZone: "Europe/Paris", hour: "2-digit", minute: "2-digit" })
+    .replace(":", "h");
+}
+function jourCourt(iso: string | null): string {
+  if (!iso) return "Sans date";
+  const l = new Date(iso).toLocaleDateString("fr-FR", {
     timeZone: "Europe/Paris",
     weekday: "short",
     day: "numeric",
     month: "short",
+  });
+  return l.charAt(0).toUpperCase() + l.slice(1);
+}
+function dateHeure(iso: string): string {
+  return new Date(iso).toLocaleString("fr-FR", {
+    day: "2-digit",
+    month: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
   });
 }
 
-export default function AdminDashboard() {
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [pros, setPros] = useState<ProLite[]>([]);
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showPast, setShowPast] = useState(false);
-  const [showCancelled, setShowCancelled] = useState(false);
-  const [search, setSearch] = useState("");
-  const [expanded, setExpanded] = useState<string | null>(null);
-  const [showModal, setShowModal] = useState(false);
-  // Fiche : édition des notes et photos
-  const [notesDraft, setNotesDraft] = useState("");
-  const [notesSaved, setNotesSaved] = useState(false);
-  const [notesError, setNotesError] = useState("");
-  // Les photos ne sont plus dans la liste : on les charge à l'ouverture d'une
-  // fiche, sinon le tableau de bord téléchargerait toutes les images à chaque
-  // ouverture (des dizaines de Mo au bout de quelques mois).
-  const [photos, setPhotos] = useState<Record<string, Photo[]>>({});
-  const [photosLoading, setPhotosLoading] = useState<string | null>(null);
-  const [tronque, setTronque] = useState(false);
+/** Étiquette courte de l'origine, pour la pastille de la liste « à traiter ». */
+const ORIGINE_COURTE: Record<string, { court: string; classe: string }> = {
+  meta: { court: "PUB", classe: "bg-violet-100 text-violet-700" },
+  web: { court: "SITE", classe: "bg-blue-100 text-blue-700" },
+  site: { court: "FORMULAIRE", classe: "bg-leaf-100 text-leaf-800" },
+  phone: { court: "TÉLÉPHONE", classe: "bg-amber-100 text-amber-800" },
+  manual: { court: "SAISI", classe: "bg-sand-50 text-leaf-800/70" },
+  recommandation: { court: "BOUCHE À OREILLE", classe: "bg-sand-50 text-leaf-800/70" },
+};
 
-  function load(opts?: { past?: boolean; q?: string }) {
-    const past = opts?.past ?? showPast;
-    const q = (opts?.q ?? search).trim();
-    const params = new URLSearchParams();
-    if (past) params.set("past", "1");
-    if (q) params.set("q", q);
-    fetch(`/api/admin/bookings?${params.toString()}`)
+/** Tuile de synthèse : le chiffre d'abord, la comparaison ensuite. */
+function Tuile({
+  label,
+  valeur,
+  aide,
+  aideCouleur,
+  icone,
+}: {
+  label: string;
+  valeur: string;
+  aide: string;
+  aideCouleur?: string;
+  icone: React.ReactNode;
+}) {
+  return (
+    <div className="card !p-5">
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-leaf-800/50">{label}</p>
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-leaf-50 text-leaf-700">
+          {icone}
+        </span>
+      </div>
+      <p className="mt-2 text-3xl font-bold text-leaf-900">{valeur}</p>
+      <p className={`mt-1 text-sm ${aideCouleur ?? "text-leaf-800/60"}`}>{aide}</p>
+    </div>
+  );
+}
+
+const ICONES = {
+  clients: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5">
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+    </svg>
+  ),
+  euro: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5">
+      <path d="M17 6H9a4 4 0 0 0 0 8h6a4 4 0 0 1 0 8H7" />
+      <path d="M4 10h9M4 14h7" />
+    </svg>
+  ),
+  agenda: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5">
+      <rect x="3" y="4" width="18" height="18" rx="2" />
+      <path d="M16 2v4M8 2v4M3 10h18" />
+    </svg>
+  ),
+};
+
+/** Courbe du chiffre d'affaires, en SVG pur (aucune librairie). */
+function Courbe({ mois }: { mois: Mois[] }) {
+  const L = 640;
+  const H = 220;
+  const padG = 52;
+  const padB = 26;
+  const max = Math.max(1, ...mois.map((m) => m.ca));
+  // Palier lisible : on arrondit au multiple supérieur de 8 000 €.
+  const pas = Math.max(2000, Math.ceil(max / 4 / 1000) * 1000);
+  const haut = pas * 4;
+  const x = (i: number) => padG + (i * (L - padG - 12)) / Math.max(1, mois.length - 1);
+  const y = (v: number) => H - padB - (v / haut) * (H - padB - 14);
+
+  const pts = mois.map((m, i) => [x(i), y(m.ca)] as const);
+  // Lissage : un point de contrôle à mi-chemin entre deux mesures.
+  let ligne = `M ${pts[0][0]} ${pts[0][1]}`;
+  for (let i = 1; i < pts.length; i++) {
+    const [px, py] = pts[i - 1];
+    const [cx, cy] = pts[i];
+    const mx = (px + cx) / 2;
+    ligne += ` C ${mx} ${py}, ${mx} ${cy}, ${cx} ${cy}`;
+  }
+  const aire = `${ligne} L ${pts[pts.length - 1][0]} ${H - padB} L ${pts[0][0]} ${H - padB} Z`;
+
+  return (
+    <svg viewBox={`0 0 ${L} ${H}`} className="w-full" role="img" aria-label="Évolution du chiffre d'affaires">
+      <defs>
+        <linearGradient id="degradeCa" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#16a34a" stopOpacity="0.22" />
+          <stop offset="100%" stopColor="#16a34a" stopOpacity="0.02" />
+        </linearGradient>
+      </defs>
+      {[0, 1, 2, 3, 4].map((i) => {
+        const v = pas * i;
+        return (
+          <g key={i}>
+            <line
+              x1={padG}
+              x2={L - 12}
+              y1={y(v)}
+              y2={y(v)}
+              stroke="#d7e0d5"
+              strokeWidth="1"
+              strokeDasharray="3 4"
+            />
+            <text x={padG - 8} y={y(v) + 4} textAnchor="end" fontSize="11" fill="#7c8a7c">
+              {v === 0 ? "0 €" : `${Math.round(v / 1000)}k €`}
+            </text>
+          </g>
+        );
+      })}
+      <path d={aire} fill="url(#degradeCa)" />
+      <path d={ligne} fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" />
+      {pts.map(([cx, cy], i) => (
+        <circle key={i} cx={cx} cy={cy} r="3.5" fill="#fff" stroke="#16a34a" strokeWidth="2">
+          <title>{`${moisCourt(mois[i].mois)} : ${euros(mois[i].ca)}`}</title>
+        </circle>
+      ))}
+      {mois.map((m, i) => (
+        <text key={m.mois} x={x(i)} y={H - 6} textAnchor="middle" fontSize="11" fill="#7c8a7c">
+          {moisCourt(m.mois).slice(0, 4)}
+        </text>
+      ))}
+    </svg>
+  );
+}
+
+export default function AdminDashboard() {
+  const [tuiles, setTuiles] = useState<Tuiles | null>(null);
+  const [mois, setMois] = useState<Mois[]>([]);
+  const [aTraiter, setATraiter] = useState<ATraiter[]>([]);
+  const [prochains, setProchains] = useState<Prochain[]>([]);
+
+  useEffect(() => {
+    fetch("/api/admin/dashboard")
       .then((r) => {
         if (r.status === 401) {
           window.location.href = "/admin/login";
@@ -120,326 +219,169 @@ export default function AdminDashboard() {
         }
         return r.json();
       })
-      .then((data) => {
-        setBookings(data.bookings ?? []);
-        setLeads(data.leads ?? []);
-        setPros(data.pros ?? []);
-        setTronque(Boolean(data.tronque));
+      .then((d) => {
+        setTuiles(d.tuiles ?? null);
+        setMois(d.mois ?? []);
+        setATraiter(d.aTraiter ?? []);
+        setProchains(d.prochains ?? []);
       })
-      .finally(() => setLoading(false));
-  }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(load, []);
+      .catch(() => {});
+  }, []);
 
-  // Recherche et historique : nouvelle requête (l'ancienne version filtrait
-  // une liste déjà entièrement téléchargée).
-  useEffect(() => {
-    const t = setTimeout(() => load({ past: showPast, q: search }), 350);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showPast, search]);
-
-  function openCard(b: Booking) {
-    const isOpen = expanded === b.id;
-    setExpanded(isOpen ? null : b.id);
-    if (!isOpen) {
-      setNotesDraft(b.description);
-      setNotesSaved(false);
-      setNotesError("");
-      if (photos[b.id] === undefined) chargerPhotos(b.id);
-    }
+  if (!tuiles) {
+    return <main className="mx-auto max-w-6xl px-4 py-10 text-center text-leaf-800/60">Chargement…</main>;
   }
 
-  async function chargerPhotos(id: string) {
-    setPhotosLoading(id);
-    try {
-      const res = await fetch(`/api/admin/bookings/${id}`);
-      const data = res.ok ? await res.json() : { photos: [] };
-      setPhotos((p) => ({ ...p, [id]: data.photos ?? [] }));
-    } catch {
-      setPhotos((p) => ({ ...p, [id]: [] }));
-    } finally {
-      setPhotosLoading(null);
-    }
-  }
-
-  async function saveNotes(id: string) {
-    setNotesError("");
-    const res = await fetch(`/api/admin/bookings/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ description: notesDraft }),
-    });
-    if (res.ok) {
-      setBookings((bs) => bs.map((b) => (b.id === id ? { ...b, description: notesDraft } : b)));
-      setNotesSaved(true);
-      setTimeout(() => setNotesSaved(false), 2500);
-    } else {
-      setNotesError("Échec de l'enregistrement, réessayez.");
-    }
-  }
-
-  async function changePro(id: string, proId: string) {
-    const res = await fetch(`/api/admin/bookings/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ proId }),
-    });
-    if (res.ok) {
-      const pro = pros.find((p) => p.id === proId) ?? null;
-      setBookings((prev) =>
-        prev.map((b) =>
-          b.id === id ? { ...b, proId: proId || null, pro: pro ? { id: pro.id, name: pro.name } : null } : b
-        )
-      );
-    }
-  }
-
-  async function savePhotos(id: string, dataUrls: string[]) {
-    // Mise à jour optimiste puis envoi (les data URLs existants sont réutilisables)
-    const res = await fetch(`/api/admin/bookings/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ photos: dataUrls }),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      const liste: Photo[] = data.booking.photos ?? [];
-      setPhotos((p) => ({ ...p, [id]: liste }));
-      setBookings((bs) => bs.map((b) => (b.id === id ? { ...b, photosCount: liste.length } : b)));
-    }
-  }
-
-  async function updateStatus(id: string, status: string) {
-    setBookings((bs) => bs.map((b) => (b.id === id ? { ...b, status } : b)));
-    await fetch(`/api/admin/bookings/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
-    });
-  }
-
-  // La fenêtre (à venir / historique) et la recherche sont faites par le
-  // serveur ; il ne reste ici que le masquage des RDV annulés.
-  const visible = bookings.filter((b) => showCancelled || b.status !== "annule");
-  visible.sort((a, b) => {
-    if (!a.startAt) return -1;
-    if (!b.startAt) return 1;
-    return new Date(a.startAt).getTime() - new Date(b.startAt).getTime();
-  });
+  const evo = tuiles.evolution;
+  const aideLeads =
+    evo === null
+      ? tuiles.nouveauxMoisPrec === 0 && tuiles.nouveauxCeMois === 0
+        ? "Aucune demande ce mois-ci"
+        : "Premier mois de mesure"
+      : `${evo > 0 ? "+" : ""}${evo} % vs mois préc.`;
+  const couleurEvo =
+    evo === null ? undefined : evo >= 0 ? "text-leaf-700 font-semibold" : "text-red-600 font-semibold";
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-6">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-bold">Rendez-vous ({visible.length})</h1>
-        <div className="flex flex-wrap items-center gap-3">
-          <label className="flex items-center gap-2 text-sm text-leaf-800/70">
-            <input type="checkbox" checked={showPast} onChange={(e) => setShowPast(e.target.checked)} />
-            RDV passés
-          </label>
-          {tronque && (
-            <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
-              Liste limitée aux 200 plus proches — affinez la recherche
-            </span>
-          )}
-          <label className="flex items-center gap-2 text-sm text-leaf-800/70">
-            <input type="checkbox" checked={showCancelled} onChange={(e) => setShowCancelled(e.target.checked)} />
-            Annulés
-          </label>
-          <button className="btn-primary !w-auto !px-4 !py-2.5 text-sm" onClick={() => setShowModal(true)}>
-            Ajouter un devis manuellement
-          </button>
-        </div>
-      </div>
+    <main className="mx-auto max-w-6xl px-4 py-6">
+      <h1 className="text-2xl font-bold">Tableau de bord</h1>
+      <p className="mb-5 text-sm text-leaf-800/60">Vue d&apos;ensemble de votre activité</p>
 
-      <input
-        className="input mb-4"
-        placeholder="Rechercher un client (nom, téléphone, ville…)"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-      />
-
-      {loading && <p className="py-8 text-center text-leaf-800/60">Chargement…</p>}
-      {!loading && visible.length === 0 && (
-        <p className="card py-8 text-center text-leaf-800/60">
-          {search.trim()
-            ? "Aucun rendez-vous ne correspond à cette recherche."
-            : showPast
-              ? "Aucun rendez-vous pour le moment."
-              : "Aucun rendez-vous à venir. Cochez « RDV passés » pour voir l'historique."}
-        </p>
-      )}
-
-      <div className="space-y-3">
-        {visible.map((b) => {
-          const status = STATUS_OPTIONS.find((s) => s.id === b.status) ?? STATUS_OPTIONS[0];
-          const isOpen = expanded === b.id;
-          return (
-            <div key={b.id} className="card">
-              <button
-                className="flex w-full items-center justify-between gap-3 text-left"
-                onClick={() => openCard(b)}
-              >
-                <div>
-                  <p className="font-semibold">
-                    {fmt(b.startAt)}
-                    {(b.firstName || b.lastName) ? ` — ${b.firstName} ${b.lastName}`.trimEnd() : " — (sans nom)"}
-                  </p>
-                  <p className="text-sm text-leaf-800/70">
-                    {PROJECT_LABELS[b.projectType] ?? b.projectType}
-                    {(b.city || b.postalCode) ? ` · ${b.city || b.postalCode}` : ""}
-                  </p>
-                  {b.source === "manual" && (
-                    <span className="mt-1 inline-block rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-600">
-                      Créé manuellement
-                    </span>
-                  )}
-                  {b.kind === "chantier" && b.status !== "annule" && (
-                    b.pro ? (
-                      <span className="mt-1 inline-block rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-800">
-                        {b.pro.name}
-                      </span>
-                    ) : (
-                      <span className="mt-1 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800">
-                        À attribuer
-                      </span>
-                    )
-                  )}
-                </div>
-                <div className="flex flex-col items-end gap-1">
-                  <span
-                    className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
-                      b.kind === "chantier"
-                        ? "bg-emerald-100 text-emerald-800"
-                        : "bg-sky-100 text-sky-800"
-                    }`}
-                  >
-                    {b.kind === "chantier" ? "Chantier" : "Devis"}
-                  </span>
-                  <span className={`rounded-full px-3 py-1 text-xs font-semibold ${status.color}`}>
-                    {status.label}
-                  </span>
-                </div>
-              </button>
-
-              {isOpen && (
-                <div className="mt-4 space-y-3 border-t border-leaf-100 pt-4 text-sm">
-                  {(b.phone || b.email) && (
-                    <p>
-                      {b.phone && <a className="text-leaf-700 underline" href={`tel:${b.phone}`}>{b.phone}</a>}
-                      {b.phone && b.email && " · "}
-                      {b.email && <a className="text-leaf-700 underline" href={`mailto:${b.email}`}>{b.email}</a>}
-                    </p>
-                  )}
-                  {(b.address || b.postalCode || b.city) && (
-                    <p>{[b.address, `${b.postalCode} ${b.city}`.trim()].filter(Boolean).join(", ")}</p>
-                  )}
-                  {b.kind === "chantier" && b.endAt && <p>{chantierLabel(b)}</p>}
-
-                  {b.kind === "chantier" && (
-                    <div>
-                      <span className="label">Professionnel attribué</span>
-                      <select
-                        className="input"
-                        value={b.proId ?? ""}
-                        onChange={(e) => changePro(b.id, e.target.value)}
-                      >
-                        <option value="">— À attribuer —</option>
-                        {pros.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.name}
-                            {b.startAt && !parseDates(p.datesJson).includes(parisDay(b.startAt))
-                              ? " (n'a pas déclaré ce jour)"
-                              : ""}
-                          </option>
-                        ))}
-                      </select>
-                      <p className="mt-1 text-xs text-leaf-800/50">
-                        Attribué automatiquement au plus proche disponible ; changez-le ici si besoin.
-                      </p>
-                    </div>
-                  )}
-
-                  <div>
-                    <span className="label">Notes</span>
-                    <textarea
-                      className="input min-h-[70px]"
-                      placeholder="Notes internes sur ce devis…"
-                      value={notesDraft}
-                      onChange={(e) => setNotesDraft(e.target.value)}
-                    />
-                    <div className="mt-1.5 flex items-center gap-2">
-                      <button
-                        className="btn-secondary !px-3 !py-1.5 text-xs"
-                        onClick={() => saveNotes(b.id)}
-                      >
-                        Enregistrer les notes
-                      </button>
-                      {notesSaved && <span className="text-xs font-semibold text-leaf-700">✓ Enregistré</span>}
-                      {notesError && <span className="text-xs font-semibold text-red-600">{notesError}</span>}
-                    </div>
-                  </div>
-
-                  {photosLoading === b.id && photos[b.id] === undefined ? (
-                    <p className="rounded-xl bg-sand-50 px-3 py-2 text-sm text-leaf-800/60">
-                      Chargement des {b.photosCount} photo(s)…
-                    </p>
-                  ) : (
-                    <PhotoUpload
-                      photos={(photos[b.id] ?? []).map((p) => p.dataUrl)}
-                      onChange={(urls) => savePhotos(b.id, urls)}
-                      label="Photos (10 max)"
-                      maxPhotos={10}
-                    />
-                  )}
-                  <div>
-                    <span className="label">Statut</span>
-                    <div className="flex flex-wrap gap-2">
-                      {STATUS_OPTIONS.map((s) => (
-                        <button
-                          key={s.id}
-                          onClick={() => updateStatus(b.id, s.id)}
-                          className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
-                            b.status === s.id ? s.color + " ring-2 ring-leaf-600/40" : "bg-gray-100 text-gray-600"
-                          }`}
-                        >
-                          {s.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {showModal && (
-        <ManualBookingModal
-          onClose={() => setShowModal(false)}
-          onCreated={() => {
-            setShowModal(false);
-            load();
-          }}
+      <div className="mb-5 grid gap-3 md:grid-cols-3">
+        <Tuile
+          label="Nouveaux clients ce mois"
+          valeur={String(tuiles.nouveauxCeMois)}
+          aide={aideLeads}
+          aideCouleur={couleurEvo}
+          icone={ICONES.clients}
         />
-      )}
+        <Tuile
+          label="Chiffre d'affaires"
+          valeur={euros(tuiles.caMois)}
+          aide="Facturé ce mois-ci"
+          icone={ICONES.euro}
+        />
+        <Tuile
+          label="Chantiers planifiés"
+          valeur={String(tuiles.chantiersSemaine)}
+          aide="Cette semaine"
+          icone={ICONES.agenda}
+        />
+      </div>
 
-      {leads.length > 0 && (
-        <section className="mt-10">
-          <h2 className="mb-3 text-lg font-bold">Demandes hors zone ({leads.length})</h2>
-          <div className="space-y-2">
-            {leads.map((l) => (
-              <div key={l.id} className="card py-3 text-sm">
-                <p className="font-semibold">
-                  {l.name} — {l.postalCode} · <a className="text-leaf-700 underline" href={`tel:${l.phone}`}>{l.phone}</a>
-                </p>
-                {l.message && <p className="mt-1 text-leaf-800/70">{l.message}</p>}
-              </div>
-            ))}
-          </div>
+      <div className="mb-5 grid gap-4 lg:grid-cols-3">
+        <section className="card lg:col-span-2">
+          <h2 className="font-bold">Évolution du chiffre d&apos;affaires</h2>
+          <p className="mb-3 text-sm text-leaf-800/60">Vos revenus facturés des 6 derniers mois</p>
+          {mois.every((m) => m.ca === 0) ? (
+            <p className="py-10 text-center text-sm text-leaf-800/50">
+              Aucune facture émise sur la période. Les montants apparaîtront ici dès vos premières
+              factures (section <b>Devis &amp; Factures</b>).
+            </p>
+          ) : (
+            <Courbe mois={mois} />
+          )}
         </section>
-      )}
+
+        <section className="card">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="font-bold">
+              À traiter{" "}
+              {aTraiter.length > 0 && (
+                <span className="ml-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-700">
+                  {aTraiter.length}
+                </span>
+              )}
+            </h2>
+            <Link href="/admin/clients" className="text-sm font-semibold text-leaf-700 underline">
+              Voir tout
+            </Link>
+          </div>
+          <p className="mb-3 text-sm text-leaf-800/60">
+            Demandes reçues il y a plus de 24 h, sans rendez-vous ni devis
+          </p>
+
+          {aTraiter.length === 0 ? (
+            <p className="py-8 text-center text-sm text-leaf-800/50">
+              Rien en attente — toutes les demandes reçues ont été prises en main.
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {aTraiter.map((c) => {
+                const o = ORIGINE_COURTE[c.origine] ?? {
+                  court: (ORIGINES[c.origine] ?? c.origine).toUpperCase(),
+                  classe: "bg-sand-50 text-leaf-800/70",
+                };
+                return (
+                  <li key={c.id} className="flex items-center gap-2.5">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-leaf-50 text-xs font-bold text-leaf-800">
+                      {initiales(c.firstName, c.lastName)}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex flex-wrap items-center gap-1.5">
+                        <span className="truncate text-sm font-semibold">
+                          {`${c.firstName} ${c.lastName}`.trim() || "Sans nom"}
+                        </span>
+                        <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${o.classe}`}>
+                          {o.court}
+                        </span>
+                      </span>
+                      <span className="block truncate text-xs text-leaf-800/60">
+                        {c.city || c.notes || "Aucune précision"}
+                      </span>
+                    </span>
+                    <span className="shrink-0 text-right">
+                      <span
+                        className={`block text-xs font-bold ${
+                          c.jours >= 7 ? "text-red-600" : "text-amber-700"
+                        }`}
+                      >
+                        {c.jours} jour{c.jours > 1 ? "s" : ""}
+                      </span>
+                      <span className="block text-[11px] text-leaf-800/50">
+                        {dateHeure(c.createdAt)}
+                      </span>
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+      </div>
+
+      <section className="card">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="font-bold">Prochains rendez-vous</h2>
+          <Link href="/admin/rendez-vous" className="text-sm font-semibold text-leaf-700 underline">
+            Tout voir
+          </Link>
+        </div>
+        {prochains.length === 0 ? (
+          <p className="py-6 text-center text-sm text-leaf-800/50">Aucun rendez-vous à venir.</p>
+        ) : (
+          <ul className="mt-2 divide-y divide-leaf-100">
+            {prochains.map((b) => (
+              <li key={b.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2 text-sm">
+                <span
+                  className={`h-2.5 w-2.5 shrink-0 rounded-full ${
+                    b.kind === "chantier" ? "bg-green-500" : "bg-blue-500"
+                  }`}
+                />
+                <span className="font-semibold">{jourCourt(b.startAt)}</span>
+                <span className="tabular-nums text-leaf-800/70">{heure(b.startAt)}</span>
+                <span className="truncate">
+                  {`${b.firstName} ${b.lastName}`.trim() || "Sans nom"}
+                </span>
+                {b.city && <span className="text-leaf-800/60">{b.city}</span>}
+                <span className="ml-auto text-xs text-leaf-800/60">
+                  {b.pro ? b.pro.name : b.kind === "chantier" ? "À attribuer" : "Vous"}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </main>
   );
 }
