@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import SiteHeader from "@/components/SiteHeader";
 import { prisma } from "@/lib/prisma";
 import { formatDateFr, formatTimeFr } from "@/lib/dates";
+import { kindMeta } from "@/lib/rdvLabels";
 import CancelActions from "./CancelActions";
 
 export const dynamic = "force-dynamic";
@@ -18,18 +19,22 @@ export default async function CancelPage({ params }: { params: { token: string }
     select: { startAt: true },
   });
   const isGroup = group.length > 1;
+  const meta = kindMeta(booking.kind);
 
   return (
     <main className="mx-auto flex min-h-screen max-w-lg flex-col justify-center px-4 py-6">
       <SiteHeader />
       <h1 className="mt-4 text-2xl font-extrabold">Modifier ou annuler votre rendez-vous</h1>
-      <div className="card mt-5 space-y-1">
+      <div className={`card mt-5 space-y-1 ${meta.filet}`}>
+        <span className={`inline-block rounded-full px-3 py-1 text-sm font-bold ${meta.pastille}`}>
+          {meta.titre}
+        </span>
         {isGroup ? (
           <>
             <p className="font-semibold">Chantier de {group.length} jours, dès 8h00 :</p>
             <ul className="ml-5 list-disc text-sm text-leaf-900">
               {group.map((g, i) => (
-                <li key={i} className="capitalize">{formatDateFr(g.startAt)}</li>
+                <li key={i} className="first-letter:uppercase">{formatDateFr(g.startAt)}</li>
               ))}
             </ul>
           </>

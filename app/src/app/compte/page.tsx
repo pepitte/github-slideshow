@@ -1,20 +1,35 @@
 "use client";
 
-// Espace particulier : liste des rendez-vous (à venir / passés), gestion.
-import { useEffect, useState } from "react";
+// Espace particulier : ses rendez-vous, dits clairement (visite de devis ou
+// chantier), puis ses coordonnées. Un chantier réservé sur plusieurs jours
+// s'affiche en un seul rendez-vous, comme le client l'a vécu en le réservant.
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import AddressAutocomplete, { type AddressValue } from "@/components/AddressAutocomplete";
+import {
+  PROJECT_LABELS,
+  creneauLabel,
+  dateLongue,
+  delaiLabel,
+  kindMeta,
+  statutClient,
+  telFr,
+} from "@/lib/rdvLabels";
 
 type Booking = {
   id: string;
   kind: string;
   projectType: string;
+  description: string;
   startAt: string | null;
+  endAt: string | null;
+  groupId: string;
   address: string;
   postalCode: string;
   city: string;
   status: string;
   cancelToken: string;
+  proPrenom: string;
 };
 type Client = {
   name: string;
@@ -24,38 +39,65 @@ type Client = {
   postalCode: string;
   city: string;
 };
+type Entreprise = { nom: string; telephone: string };
 
-const PROJECT_LABELS: Record<string, string> = {
-  entretien: "Entretien de jardin général",
-  taille_haie: "Taille de haie",
-  debroussaillage: "Débroussaillage",
-  contrat_annuel: "Contrat d'entretien à l'année",
-  autre: "Autre projet",
-};
-const STATUS_LABELS: Record<string, string> = {
-  a_faire: "À venir",
-  devis_envoye: "Devis envoyé",
-  gagne: "Confirmé",
-  perdu: "Clôturé",
-  annule: "Annulé",
+/** Un rendez-vous tel que le client le comprend : un chantier de 3 jours = 1. */
+type Rdv = {
+  cle: string;
+  principal: Booking;
+  jours: Booking[];
+  debut: string | null;
+  fin: string | null;
 };
 
-function fmt(iso: string | null): string {
-  if (!iso) return "Date à définir";
-  return new Date(iso).toLocaleString("fr-FR", {
-    timeZone: "Europe/Paris",
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+function regrouper(bookings: Booking[]): Rdv[] {
+  const paquets = new Map<string, Booking[]>();
+  for (const b of bookings) {
+    const cle = b.groupId || b.id;
+    paquets.set(cle, [...(paquets.get(cle) ?? []), b]);
+  }
+  return Array.from(paquets.entries())
+    .map(([cle, liste]) => {
+      const jours = [...liste].sort((a, b) =>
+        (a.startAt ?? "").localeCompare(b.startAt ?? "")
+      );
+      return {
+        cle,
+        // Le rendez-vous principal porte le lien d'annulation du groupe.
+        principal: jours.find((j) => j.id === cle) ?? jours[0],
+        jours,
+        debut: jours[0].startAt,
+        fin: jours[jours.length - 1].startAt,
+      };
+    })
+    .sort((a, b) => (b.debut ?? "").localeCompare(a.debut ?? ""));
+}
+
+function Icone({ kind }: { kind: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5">
+      {kind === "chantier" ? (
+        <>
+          <path d="M3 21h18" />
+          <path d="M6 21V9l6-4 6 4v12" />
+          <path d="M10 21v-6h4v6" />
+        </>
+      ) : (
+        <>
+          <rect x="3" y="5" width="18" height="16" rx="2" />
+          <path d="M8 3v4M16 3v4M3 11h18" />
+        </>
+      )}
+    </svg>
+  );
 }
 
 export default function ClientAccount() {
   const [client, setClient] = useState<Client | null>(null);
+  const [entreprise, setEntreprise] = useState<Entreprise>({ nom: "", telephone: "" });
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [historique, setHistorique] = useState(false);
   // Fiche « Mes coordonnées » (modifiable)
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState("");
@@ -87,6 +129,7 @@ export default function ClientAccount() {
       .then((data) => {
         setClient(data.client);
         if (data.client) fillForm(data.client);
+        if (data.entreprise) setEntreprise(data.entreprise);
         setBookings(data.bookings ?? []);
       })
       .finally(() => setLoading(false));
@@ -129,33 +172,109 @@ export default function ClientAccount() {
   }
 
   const now = Date.now();
+  const rdvs = useMemo(() => regrouper(bookings), [bookings]);
   // Un devis « sans date » (créé par le gérant) reste dans « À venir ».
-  const upcoming = bookings.filter(
-    (b) => (!b.startAt || new Date(b.startAt).getTime() >= now) && b.status !== "annule"
+  const aVenir = rdvs
+    .filter(
+      (r) =>
+        r.principal.status !== "annule" && (!r.fin || new Date(r.fin).getTime() >= now)
+    )
+    .reverse(); // le plus proche en premier
+  const passes = rdvs.filter(
+    (r) =>
+      r.principal.status === "annule" || (r.fin != null && new Date(r.fin).getTime() < now)
   );
-  const past = bookings.filter(
-    (b) => b.startAt && (new Date(b.startAt).getTime() < now || b.status === "annule")
-  );
+  const prochain = aVenir[0];
 
-  function card(b: Booking) {
+  function Carte({ r, vedette }: { r: Rdv; vedette?: boolean }) {
+    const b = r.principal;
+    const meta = kindMeta(b.kind);
+    const passe = r.fin != null && new Date(r.fin).getTime() < now;
+    const statut = statutClient(b.kind, b.status, passe);
+    const multi = r.jours.length > 1;
+    const delai = b.status === "annule" ? "" : delaiLabel(r.debut, now);
+    const annulable = b.status !== "annule" && (!r.debut || new Date(r.debut).getTime() >= now);
+
+    // Un rendez-vous annulé garde sa place mais perd sa couleur : on le
+    // reconnaît d'un coup d'œil sans le confondre avec un rendez-vous actif.
+    const annule = b.status === "annule";
     return (
-      <div key={b.id} className="card">
-        <div className="flex items-start justify-between gap-2">
-          <p className="font-semibold capitalize">{fmt(b.startAt)}</p>
-          <span className="rounded-full bg-leaf-100 px-2.5 py-0.5 text-[11px] font-semibold text-leaf-800">
-            {b.kind === "chantier" ? "Chantier" : "Devis"}
+      <article
+        className={`card ${
+          annule ? "border-l-4 border-l-leaf-200 opacity-70" : meta.filet
+        } ${vedette ? "shadow-md" : ""}`}
+      >
+        <div className="flex flex-wrap items-center gap-2">
+          <span
+            className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-bold ${
+              annule ? "bg-leaf-100 text-leaf-800/60" : meta.pastille
+            }`}
+          >
+            <Icone kind={b.kind} />
+            {multi ? `${meta.titre} · ${r.jours.length} jours` : meta.titre}
+          </span>
+          <span className={`ml-auto rounded-full px-2.5 py-1 text-xs font-semibold ${statut.classe}`}>
+            {statut.label}
           </span>
         </div>
-        <p className="mt-1 text-sm text-leaf-800/70">
-          {PROJECT_LABELS[b.projectType] ?? b.projectType} · {b.city || b.postalCode}
+
+        <p className="mt-3 text-lg font-bold leading-tight first-letter:uppercase">
+          {multi
+            ? `Du ${dateLongue(r.debut)} au ${dateLongue(r.fin)}`
+            : dateLongue(r.debut)}
         </p>
-        <p className="mt-1 text-sm text-leaf-800/60">{STATUS_LABELS[b.status] ?? b.status}</p>
-        {b.status !== "annule" && b.startAt && new Date(b.startAt).getTime() >= now && (
-          <Link href={`/annuler/${b.cancelToken}`} className="mt-2 inline-block text-sm font-semibold text-leaf-700 underline">
-            Modifier ou annuler
-          </Link>
+        {r.debut && (
+          <p className="text-sm text-leaf-800/70">
+            {multi
+              ? "Tous les jours dès 8h00"
+              : creneauLabel(b.kind, r.debut, b.endAt)}
+            {delai && <span className="font-semibold text-leaf-700"> · {delai}</span>}
+          </p>
         )}
-      </div>
+
+        <dl className="mt-3 space-y-1 text-sm text-leaf-800/80">
+          <div className="flex gap-2">
+            <dt className="w-28 shrink-0 text-leaf-800/50">Prestation</dt>
+            <dd>{PROJECT_LABELS[b.projectType] ?? b.projectType}</dd>
+          </div>
+          <div className="flex gap-2">
+            <dt className="w-28 shrink-0 text-leaf-800/50">Adresse</dt>
+            <dd>
+              {b.address ? `${b.address}, ` : ""}
+              {b.postalCode} {b.city}
+            </dd>
+          </div>
+          {b.proPrenom && b.kind === "chantier" && (
+            <div className="flex gap-2">
+              <dt className="w-28 shrink-0 text-leaf-800/50">Paysagiste</dt>
+              <dd>{b.proPrenom}</dd>
+            </div>
+          )}
+        </dl>
+
+        {/* Le rappel pratique n'a d'intérêt que sur le rendez-vous mis en avant
+            et sur les chantiers (accès au jardin) : ailleurs il se répète. */}
+        {!passe && b.status !== "annule" && (vedette || b.kind === "chantier") && (
+          <p className="mt-3 rounded-xl bg-leaf-50 px-3 py-2 text-sm text-leaf-800/80">
+            {multi ? meta.explication.replace("ce jour-là", "ces jours-là") : meta.explication}
+          </p>
+        )}
+
+        {(annulable || (r.debut && !passe && b.status !== "annule")) && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {r.debut && !passe && b.status !== "annule" && (
+              <a href={`/api/rdv/${b.cancelToken}/ics`} className="btn-secondary !py-2 text-sm">
+                Ajouter à mon agenda
+              </a>
+            )}
+            {annulable && (
+              <Link href={`/annuler/${b.cancelToken}`} className="btn-secondary !py-2 text-sm">
+                Modifier ou annuler
+              </Link>
+            )}
+          </div>
+        )}
+      </article>
     );
   }
 
@@ -175,9 +294,63 @@ export default function ClientAccount() {
 
       {!loading && (
         <>
+          {prochain ? (
+            <section className="mb-6">
+              <h2 className="mb-2 text-lg font-bold">Votre prochain rendez-vous</h2>
+              <Carte r={prochain} vedette />
+            </section>
+          ) : (
+            <section className="card mb-6 text-center">
+              <p className="font-bold">Aucun rendez-vous prévu</p>
+              <p className="mt-1 text-sm text-leaf-800/70">
+                Réservez une visite gratuite pour recevoir votre devis, ou une journée
+                d&apos;intervention si vous savez déjà ce dont vous avez besoin.
+              </p>
+            </section>
+          )}
+
           <div className="mb-6 flex flex-col gap-2 sm:flex-row">
-            <Link href="/#reserver" className="btn-primary">Réserver un rendez-vous</Link>
+            <Link href="/#reserver" className="btn-primary flex-1 text-center">
+              Demander un devis gratuit
+            </Link>
+            <Link href="/#chantier" className="btn-secondary flex-1 text-center">
+              Réserver un chantier
+            </Link>
           </div>
+
+          {aVenir.length > 1 && (
+            <section className="mb-6">
+              <h2 className="mb-3 text-lg font-bold">
+                Vos autres rendez-vous ({aVenir.length - 1})
+              </h2>
+              <div className="space-y-3">
+                {aVenir.slice(1).map((r) => (
+                  <Carte key={r.cle} r={r} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {passes.length > 0 && (
+            <section className="mb-6">
+              <button
+                onClick={() => setHistorique((v) => !v)}
+                className="mb-3 flex w-full items-center justify-between text-lg font-bold"
+              >
+                Historique ({passes.length})
+                <span className="text-sm font-semibold text-leaf-700">
+                  {historique ? "Masquer" : "Afficher"}
+                </span>
+              </button>
+              {historique && (
+                <div className="space-y-3">
+                  {passes.map((r) => (
+                    <Carte key={r.cle} r={r} />
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
 
           {/* Coordonnées enregistrées : reprises automatiquement à chaque réservation */}
           <section className="card mb-6">
@@ -198,7 +371,7 @@ export default function ClientAccount() {
 
             {!editing ? (
               <div className="mt-2 space-y-1 text-sm text-leaf-800/80">
-                <p>{client?.phone || "Téléphone non renseigné"}</p>
+                <p>{client?.phone ? telFr(client.phone) : "Téléphone non renseigné"}</p>
                 <p>{client?.email}</p>
                 {client?.address ? (
                   <p>
@@ -239,20 +412,16 @@ export default function ClientAccount() {
             )}
           </section>
 
-          <h2 className="mb-3 text-lg font-bold">À venir ({upcoming.length})</h2>
-          {upcoming.length === 0 ? (
-            <p className="card py-6 text-center text-sm text-leaf-800/60">
-              Aucun rendez-vous à venir.
+          {entreprise.telephone && (
+            <p className="pb-4 text-center text-sm text-leaf-800/70">
+              Une question ?{" "}
+              <a
+                href={`tel:${entreprise.telephone.replace(/\s/g, "")}`}
+                className="font-semibold text-leaf-700 underline"
+              >
+                {entreprise.telephone}
+              </a>
             </p>
-          ) : (
-            <div className="space-y-3">{upcoming.map(card)}</div>
-          )}
-
-          {past.length > 0 && (
-            <>
-              <h2 className="mb-3 mt-8 text-lg font-bold">Historique</h2>
-              <div className="space-y-3">{past.map(card)}</div>
-            </>
           )}
         </>
       )}
