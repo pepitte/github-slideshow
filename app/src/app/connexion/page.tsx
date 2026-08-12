@@ -17,7 +17,7 @@ export default function ConnexionPage() {
 
       <div className="space-y-3">
         <Link href="/compte/login" className="card block transition hover:border-leaf-300">
-          <p className="font-bold text-leaf-900">Je suis un particulier</p>
+          <p className="font-bold text-leaf-900">Je suis un client</p>
           <p className="mt-1 text-sm text-leaf-800/70">
             Suivez et gérez vos rendez-vous de devis et d&apos;entretien.
           </p>
