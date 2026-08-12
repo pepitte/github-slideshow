@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { currentClientId } from "@/lib/clientAuth";
+import { getSettings } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 
@@ -19,16 +20,25 @@ export async function GET() {
       id: true,
       kind: true,
       projectType: true,
+      description: true,
       startAt: true,
+      endAt: true,
+      // Chantier multi-jours : permet de regrouper les jours en un seul RDV.
+      groupId: true,
       address: true,
       postalCode: true,
       city: true,
       status: true,
       cancelToken: true,
+      // Le prénom du paysagiste attribué : le client sait qui vient chez lui.
+      pro: { select: { name: true } },
     },
   });
 
+  const settings = await getSettings();
+
   return NextResponse.json({
+    entreprise: { nom: settings.companyName, telephone: settings.companyPhone },
     client: {
       name: client.name,
       email: client.email,
@@ -37,7 +47,11 @@ export async function GET() {
       postalCode: client.postalCode,
       city: client.city,
     },
-    bookings,
+    // Le client voit le prénom de son paysagiste, pas son nom complet.
+    bookings: bookings.map(({ pro, ...b }) => ({
+      ...b,
+      proPrenom: pro?.name?.trim().split(/\s+/)[0] ?? "",
+    })),
   });
 }
 

@@ -5,6 +5,7 @@
 // ligne s'ouvre sur la fiche complète (coordonnées, RDV, journal des échanges).
 import { Fragment, useEffect, useState } from "react";
 import FicheContact from "./FicheContact";
+import { telFr } from "@/lib/rdvLabels";
 
 export type Contact = {
   id: string;
@@ -35,13 +36,6 @@ type AgenceLite = { id: string; nom: string; couleur: string };
 function euros(n: number): string {
   return n.toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
 }
-/** « 0651525354 » → « 06 51 52 53 54 » : lisible d'un coup d'œil. */
-function telFr(t: string): string {
-  const d = (t || "").replace(/\D/g, "");
-  if (d.length === 10) return d.replace(/(\d{2})(?=\d)/g, "$1 ").trim();
-  return t;
-}
-
 function dateCourte(iso: string | null): string {
   if (!iso) return "—";
   return new Date(iso).toLocaleDateString("fr-FR", {
