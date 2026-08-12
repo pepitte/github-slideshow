@@ -4,7 +4,6 @@
 // donné lieu à un rendez-vous ou non. Tuiles de synthèse puis tableau ; une
 // ligne s'ouvre sur la fiche complète (coordonnées, RDV, journal des échanges).
 import { Fragment, useEffect, useState } from "react";
-import { ORIGINES } from "@/lib/contactLabels";
 import FicheContact from "./FicheContact";
 
 export type Contact = {
@@ -119,12 +118,9 @@ export default function AdminClientsPage() {
   const [tronque, setTronque] = useState(false);
   const [chargement, setChargement] = useState(true);
   const [q, setQ] = useState("");
-  const [origine, setOrigine] = useState("");
   const [agence, setAgence] = useState("");
   const [ouvert, setOuvert] = useState<string | null>(null);
   const [nouveau, setNouveau] = useState(false);
-  const [reprise, setReprise] = useState("");
-  const [repriseEnCours, setRepriseEnCours] = useState(false);
   const [brouillon, setBrouillon] = useState({
     firstName: "",
     lastName: "",
@@ -138,7 +134,6 @@ export default function AdminClientsPage() {
   function charger() {
     const p = new URLSearchParams();
     if (q.trim()) p.set("q", q.trim());
-    if (origine) p.set("origine", origine);
     if (agence) p.set("agence", agence);
     fetch(`/api/admin/contacts?${p.toString()}`)
       .then((r) => {
@@ -168,23 +163,7 @@ export default function AdminClientsPage() {
     const t = setTimeout(charger, 300);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q, origine, agence]);
-
-  async function lancerReprise() {
-    if (
-      !window.confirm(
-        "Reprendre les rendez-vous, prospects et comptes existants pour remplir la base clients ?\nL'opération peut être relancée sans risque : elle ne crée pas de doublon."
-      )
-    )
-      return;
-    setRepriseEnCours(true);
-    setReprise("");
-    const res = await fetch("/api/admin/contacts/reprise", { method: "POST" });
-    const d = await res.json();
-    setRepriseEnCours(false);
-    setReprise(d.message ?? d.error ?? "Reprise impossible.");
-    charger();
-  }
+  }, [q, agence]);
 
   async function creer() {
     const res = await fetch("/api/admin/contacts", {
@@ -219,10 +198,6 @@ export default function AdminClientsPage() {
         <Tuile label="CA généré" valeur={euros(stats.caTotal)} couleur="#347030" icone={ICONES.ca} />
       </div>
 
-      {reprise && (
-        <p className="mb-3 rounded-xl bg-leaf-50 px-4 py-3 text-sm font-medium text-leaf-800">{reprise}</p>
-      )}
-
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <input
           className="input flex-1 !w-auto"
@@ -230,14 +205,6 @@ export default function AdminClientsPage() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
-        <select className="input !w-auto" value={origine} onChange={(e) => setOrigine(e.target.value)}>
-          <option value="">Toutes origines</option>
-          {Object.entries(ORIGINES).map(([id, label]) => (
-            <option key={id} value={id}>
-              {label}
-            </option>
-          ))}
-        </select>
         {agences.length > 0 && (
           <select className="input !w-auto" value={agence} onChange={(e) => setAgence(e.target.value)}>
             <option value="">Tous secteurs</option>
@@ -248,9 +215,6 @@ export default function AdminClientsPage() {
             ))}
           </select>
         )}
-        <button className="btn-secondary !px-3 !py-2.5 text-sm" onClick={lancerReprise} disabled={repriseEnCours}>
-          {repriseEnCours ? "Reprise…" : "Reprendre l'existant"}
-        </button>
         <button className="btn-primary !w-auto !px-4 !py-2.5 text-sm" onClick={() => setNouveau(true)}>
           + Nouveau client
         </button>
@@ -307,12 +271,13 @@ export default function AdminClientsPage() {
 
       {!chargement && contacts.length === 0 && (
         <div className="card py-8 text-center text-sm text-leaf-800/60">
-          {q || origine || agence ? (
+          {q || agence ? (
             "Aucun client ne correspond."
           ) : (
             <>
-              La base est vide. Si vous aviez déjà des rendez-vous et des prospects, cliquez sur
-              <b> Reprendre l&apos;existant</b> : ils seront regroupés en fiches clients.
+              La base est vide. Si vous aviez déjà des rendez-vous et des prospects, lancez la
+              reprise depuis <b>Paramètres → Reprise des données</b> : ils seront regroupés en
+              fiches clients.
             </>
           )}
         </div>

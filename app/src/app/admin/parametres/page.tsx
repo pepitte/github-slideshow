@@ -4,6 +4,7 @@
 import { useEffect, useRef, useState } from "react";
 import PhotoUpload from "@/components/PhotoUpload";
 import AgencesSection from "./AgencesSection";
+import RepriseSection from "./RepriseSection";
 
 /** Redimensionne le logo côté client (max 600 px de large, PNG). */
 async function fileToLogoDataUrl(file: File): Promise<string> {
@@ -308,6 +309,8 @@ export default function AdminSettingsPage() {
         </section>
 
         <AgencesSection />
+
+        <RepriseSection />
 
         {/* Zone d'intervention (repli si aucun secteur) */}
         <section className="card space-y-3">
