@@ -17,6 +17,8 @@ type Booking = {
   startAt: string;
   endAt: string;
   status: string;
+  proId?: string | null;
+  affaire?: { montant: number | null } | null;
 };
 type Pro = {
   id: string;
@@ -81,6 +83,27 @@ function parisTime(iso: string): string {
     .replace(":", "h");
 }
 
+const PRESTATIONS: Record<string, string> = {
+  entretien: "Entretien de jardin",
+  taille_haie: "Taille de haie",
+  debroussaillage: "Débroussaillage",
+  contrat_annuel: "Contrat d'entretien",
+  autre: "Autre projet",
+};
+
+function euros(n: number): string {
+  return n.toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
+}
+
+/** « 4h », « 30 min », « 2h30 » — la durée réelle du rendez-vous. */
+function dureeLabel(b: { startAt: string; endAt: string }): string {
+  const min = Math.max(0, Math.round((new Date(b.endAt).getTime() - new Date(b.startAt).getTime()) / 60000));
+  if (min < 60) return `${min} min`;
+  const h = Math.floor(min / 60);
+  const r = min % 60;
+  return r ? `${h}h${String(r).padStart(2, "0")}` : `${h}h`;
+}
+
 export default function AgendaView({
   endpoint,
   loginPath,
@@ -101,6 +124,8 @@ export default function AgendaView({
   const [todayBookings, setTodayBookings] = useState<Booking[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  // Filtre « qui » : voir l'agenda d'un seul paysagiste, ou tout le monde.
+  const [proFiltre, setProFiltre] = useState("");
 
   const todayKey = keyOf(new Date());
 
@@ -145,11 +170,18 @@ export default function AgendaView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /** Les RDV retenus par le filtre « qui ». */
+  const bookingsVisibles = useMemo(() => {
+    if (!proFiltre) return bookings;
+    if (proFiltre === "sans") return bookings.filter((b) => !b.proId);
+    return bookings.filter((b) => b.proId === proFiltre);
+  }, [bookings, proFiltre]);
+
   const bookingsByDay = useMemo(() => {
     const map: Record<string, Booking[]> = {};
-    for (const b of bookings) (map[parisDay(b.startAt)] ??= []).push(b);
+    for (const b of bookingsVisibles) (map[parisDay(b.startAt)] ??= []).push(b);
     return map;
-  }, [bookings]);
+  }, [bookingsVisibles]);
 
   // Un pro est disponible un jour donné s'il l'a coché en chantier ou s'il y a
   // déclaré des créneaux de visite — il n'y a pas d'autre statut.
@@ -337,6 +369,8 @@ export default function AgendaView({
                     // garde la seule heure — un nom tronqué à « 17h3… » ne sert
                     // à rien, le détail complet est au clic sur la journée.
                     const compact = hauteur < DEUX_LIGNES_PX;
+                    // Chantier sans paysagiste : hachuré, il demande une action.
+                    const aAttribuer = b.kind === "chantier" && !b.proId;
                     // Étroit = vue semaine (7 colonnes) ET largeur partagée.
                     // En vue Jour la colonne est large : on garde le nom.
                     const etroit = compact && cols > 1 && gridDays.length > 1;
@@ -345,19 +379,27 @@ export default function AgendaView({
                       <button
                         key={b.id}
                         onClick={() => setSelected(day)}
-                        title={`${plage} · ${b.firstName} ${b.lastName}`}
+                        title={`${plage} · ${b.firstName} ${b.lastName}${aAttribuer ? " · À ATTRIBUER" : ""}`}
                         className={`absolute overflow-hidden rounded-lg text-left font-semibold leading-tight text-white shadow-sm ${
                           etroit
                             ? "px-1 py-0.5 text-[10px]"
                             : compact
                               ? "px-1.5 py-0.5 text-[11px]"
                               : "px-1.5 py-1 text-[11px]"
-                        } ${b.kind === "chantier" ? "bg-green-500" : "bg-blue-500"}`}
+                        } ${
+                          aAttribuer ? "bg-amber-500" : b.kind === "chantier" ? "bg-green-500" : "bg-blue-500"
+                        }`}
                         style={{
                           top: ((start - HOUR_START * 60) / 60) * HOUR_PX + 1,
                           height: hauteur,
                           left: `calc(${lane * width}% + 2px)`,
                           width: `calc(${width}% - 4px)`,
+                          ...(aAttribuer
+                            ? {
+                                backgroundImage:
+                                  "repeating-linear-gradient(45deg, rgba(255,255,255,.45) 0 5px, transparent 5px 10px)",
+                              }
+                            : {}),
                         }}
                       >
                         {etroit ? (
@@ -412,12 +454,28 @@ export default function AgendaView({
               </button>
             ))}
           </div>
+          {pros.length > 0 && (
+            <select
+              className="input !w-auto !py-1.5 text-sm"
+              value={proFiltre}
+              onChange={(e) => setProFiltre(e.target.value)}
+            >
+              <option value="">Tous les paysagistes</option>
+              {pros.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+              <option value="sans">— À attribuer —</option>
+            </select>
+          )}
         </div>
       </div>
 
       <div className="mb-3 flex flex-wrap gap-3 text-xs text-leaf-800/70">
         <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-blue-500" /> RDV devis</span>
         <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-green-500" /> Chantier</span>
+        <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-amber-500" /> Chantier à attribuer</span>
         <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm bg-leaf-200" /> Pro disponible (vert = chantier, bleu = visites)</span>
       </div>
 
@@ -564,22 +622,61 @@ export default function AgendaView({
             )}
           </div>
 
-          {/* Encart « Aujourd'hui » */}
-          <aside className="card w-full shrink-0 lg:w-64">
+          {/* Encart « Aujourd'hui » : le détail de la journée en cours */}
+          <aside className="card w-full shrink-0 lg:w-72">
             <h2 className="mb-2 font-bold">Aujourd&apos;hui</h2>
             {todayBookings.length === 0 ? (
               <p className="text-sm text-leaf-800/50">Aucun rendez-vous aujourd&apos;hui.</p>
             ) : (
               <div className="space-y-2">
-                {todayBookings.map((b) => (
-                  <div key={b.id} className="flex items-center gap-2 text-sm">
-                    <span className={`h-2 w-2 shrink-0 rounded-full ${b.kind === "chantier" ? "bg-green-500" : "bg-blue-500"}`} />
-                    <span className="font-semibold">{parisTime(b.startAt)}</span>
-                    <span className="truncate">
-                      {b.firstName} {b.lastName}
-                    </span>
-                  </div>
-                ))}
+                {todayBookings.map((b) => {
+                  const aAttribuer = b.kind === "chantier" && !b.proId;
+                  const nomPro = pros.find((p) => p.id === b.proId)?.name;
+                  return (
+                    <div
+                      key={b.id}
+                      className={`rounded-xl border px-3 py-2 ${
+                        aAttribuer
+                          ? "border-amber-300 bg-amber-50"
+                          : b.kind === "chantier"
+                            ? "border-green-200 bg-green-50"
+                            : "border-blue-200 bg-blue-50"
+                      }`}
+                    >
+                      <div className="flex items-baseline justify-between gap-2">
+                        <span className="text-sm font-bold">{parisTime(b.startAt)}</span>
+                        <span className="text-xs text-leaf-800/60">{dureeLabel(b)}</span>
+                      </div>
+                      <p className="text-sm font-semibold">
+                        {`${b.firstName} ${b.lastName}`.trim() || "Sans nom"}
+                        {showContacts && b.affaire?.montant ? (
+                          <span className="ml-1 font-normal text-leaf-800/70">
+                            ({euros(b.affaire.montant)})
+                          </span>
+                        ) : null}
+                      </p>
+                      <p className="text-xs text-leaf-800/70">
+                        {PRESTATIONS[b.projectType] ?? b.projectType}
+                        {b.city ? ` · ${b.city}` : ""}
+                      </p>
+                      <p className="mt-0.5 text-xs font-semibold">
+                        {aAttribuer ? (
+                          <span className="text-amber-800">À attribuer</span>
+                        ) : (
+                          <span className="text-leaf-800/70">{nomPro ?? "Vous"}</span>
+                        )}
+                      </p>
+                      {showContacts && b.phone && (
+                        <a
+                          className="mt-1.5 block rounded-lg bg-white py-1.5 text-center text-xs font-semibold text-leaf-800 shadow-sm"
+                          href={`tel:${b.phone}`}
+                        >
+                          Appeler {b.phone}
+                        </a>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </aside>
