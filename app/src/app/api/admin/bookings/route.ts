@@ -91,9 +91,14 @@ function cleanPhotos(v: unknown): string[] {
     .slice(0, 10);
 }
 
-// POST /api/admin/bookings — devis créé à la main par le gérant (client au
-// téléphone, prospect rencontré sur place…). Tous les champs sont optionnels ;
-// sans date choisie, le devis reste « sans date » (startAt null).
+/** Durée d'un jour de chantier posé à la main, en minutes. */
+const CHANTIER_MIN: Record<string, number> = { demi: 4 * 60, journee: 8 * 60 };
+const PROJECT_TYPES = ["entretien", "taille_haie", "debroussaillage", "contrat_annuel", "autre"];
+
+// POST /api/admin/bookings — rendez-vous créé à la main par le gérant (client au
+// téléphone, prospect rencontré sur place, créneau posé depuis l'agenda…). Tous
+// les champs sont optionnels ; sans date choisie, il reste « sans date »
+// (startAt null). `kind` vaut « devis » (défaut) ou « chantier ».
 export async function POST(req: NextRequest) {
   if (!isAdminAuthenticated()) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
@@ -115,6 +120,9 @@ export async function POST(req: NextRequest) {
   const description = s("description");
   const dateKey = s("date"); // AAAA-MM-JJ (facultatif)
   const time = s("time"); // HH:mm (facultatif)
+  const kind = s("kind") === "chantier" ? "chantier" : "devis";
+  const formule = s("formule") === "journee" ? "journee" : "demi";
+  const projectType = PROJECT_TYPES.includes(s("projectType")) ? s("projectType") : "autre";
   const photos = cleanPhotos(body.photos);
 
   // Garde-fou : au moins une information.
@@ -140,7 +148,9 @@ export async function POST(req: NextRequest) {
     }
     const settings = await getSettings();
     startAt = parisTimeToUtc(dateKey, time);
-    endAt = new Date(startAt.getTime() + settings.visitDurationMin * 60_000);
+    const minutes =
+      kind === "chantier" ? CHANTIER_MIN[formule] : settings.visitDurationMin;
+    endAt = new Date(startAt.getTime() + minutes * 60_000);
   }
 
   // Fiche client : un devis saisi au téléphone doit lui aussi entrer dans la
@@ -170,9 +180,9 @@ export async function POST(req: NextRequest) {
       postalCode,
       city,
       description,
-      kind: "devis",
+      kind,
       source: "manual",
-      projectType: "autre",
+      projectType,
       startAt,
       endAt,
       photos: { create: photos.map((dataUrl) => ({ dataUrl })) },
@@ -183,8 +193,9 @@ export async function POST(req: NextRequest) {
     await affairePourRdv({ ...booking, proId: null });
     await journaliser(
       contact.id,
-      "devis",
-      description || "Devis créé à la main depuis le tableau de bord.",
+      kind === "chantier" ? "rdv" : "devis",
+      description ||
+        `${kind === "chantier" ? "Chantier" : "Devis"} créé à la main depuis l'espace gérant.`,
       { sens: "interne", auteur: "gerant" }
     );
   }
