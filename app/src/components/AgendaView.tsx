@@ -108,10 +108,21 @@ export default function AgendaView({
   endpoint,
   loginPath,
   showContacts = false,
+  onCreneau,
+  refreshToken = 0,
 }: {
   endpoint: string;
   loginPath: string;
   showContacts?: boolean;
+  /**
+   * Fourni par l'espace gérant : un clic sur une zone libre de la grille
+   * horaire remonte le jour et l'heure (arrondie à la demi-heure) pour ouvrir
+   * la création de rendez-vous. Absent ailleurs (espace pro) : l'agenda reste
+   * en lecture seule.
+   */
+  onCreneau?: (dateKey: string, heure: string) => void;
+  /** Incrémenter cette valeur recharge l'agenda (après une création). */
+  refreshToken?: number;
 }) {
   const [view, setView] = useState<View>("semaine");
   const [refDate, setRefDate] = useState(() => {
@@ -159,7 +170,7 @@ export default function AgendaView({
       })
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [view, refDate]);
+  }, [view, refDate, refreshToken]);
 
   // Encart « Aujourd'hui » : toujours alimenté, quelle que soit la période affichée
   useEffect(() => {
@@ -168,7 +179,7 @@ export default function AgendaView({
       .then((data) => setTodayBookings(data?.bookings ?? []))
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [refreshToken]);
 
   /** Les RDV retenus par le filtre « qui ». */
   const bookingsVisibles = useMemo(() => {
@@ -349,7 +360,29 @@ export default function AgendaView({
               return (
                 <div
                   key={day}
-                  className="relative border-l border-leaf-100"
+                  onClick={
+                    onCreneau
+                      ? (e) => {
+                          // Position du clic dans la colonne → heure, arrondie
+                          // à la demi-heure comme les créneaux du site.
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          const minutes =
+                            HOUR_START * 60 + ((e.clientY - rect.top) / HOUR_PX) * 60;
+                          const cale = Math.max(
+                            HOUR_START * 60,
+                            Math.floor(minutes / 30) * 30
+                          );
+                          onCreneau(
+                            day,
+                            `${pad(Math.floor(cale / 60))}:${pad(cale % 60)}`
+                          );
+                        }
+                      : undefined
+                  }
+                  title={onCreneau ? "Cliquez pour ajouter un rendez-vous" : undefined}
+                  className={`relative border-l border-leaf-100 ${
+                    onCreneau ? "cursor-copy" : ""
+                  }`}
                   style={{ height: hours.length * HOUR_PX }}
                 >
                   {hours.map((h, i) => (
@@ -378,7 +411,12 @@ export default function AgendaView({
                     return (
                       <button
                         key={b.id}
-                        onClick={() => setSelected(day)}
+                        onClick={(e) => {
+                          // Sans cela, le clic sur un RDV créerait aussi un
+                          // créneau libre dans la colonne qui le porte.
+                          e.stopPropagation();
+                          setSelected(day);
+                        }}
                         title={`${plage} · ${b.firstName} ${b.lastName}${aAttribuer ? " · À ATTRIBUER" : ""}`}
                         className={`absolute overflow-hidden rounded-lg text-left font-semibold leading-tight text-white shadow-sm ${
                           etroit
@@ -432,12 +470,27 @@ export default function AgendaView({
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-bold">Agenda</h1>
+        <div>
+          <h1 className="text-xl font-bold">Agenda</h1>
+          {onCreneau && (
+            <p className="text-sm text-leaf-800/60">
+              Cliquez sur une plage horaire libre pour ajouter un rendez-vous.
+            </p>
+          )}
+        </div>
         <div className="flex flex-wrap items-center gap-2">
+          {onCreneau && (
+            <button
+              className="btn-primary !px-3 !py-1.5 text-sm"
+              onClick={() => onCreneau(days[0] ?? todayKey, "09:00")}
+            >
+              + Rendez-vous
+            </button>
+          )}
           <button className="btn-secondary !px-3 !py-1.5" onClick={() => navigate(-1)}>←</button>
           <button className="btn-secondary !px-3 !py-1.5" onClick={goToday}>Aujourd&apos;hui</button>
           <button className="btn-secondary !px-3 !py-1.5" onClick={() => navigate(1)}>→</button>
-          <span className="min-w-[11rem] text-center text-sm font-semibold capitalize">{periodLabel}</span>
+          <span className="min-w-[11rem] text-center text-sm font-semibold first-letter:uppercase">{periodLabel}</span>
           <div className="flex rounded-xl bg-leaf-50 p-1">
             {(["mois", "semaine", "jour"] as View[]).map((v) => (
               <button

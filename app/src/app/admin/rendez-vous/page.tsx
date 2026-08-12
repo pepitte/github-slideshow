@@ -248,7 +248,7 @@ export default function AdminDashboard() {
             Annulés
           </label>
           <button className="btn-primary !w-auto !px-4 !py-2.5 text-sm" onClick={() => setShowModal(true)}>
-            Ajouter un devis manuellement
+            Ajouter un rendez-vous
           </button>
         </div>
       </div>
