@@ -79,6 +79,8 @@ model Settings {
   googleTokenExpiry  DateTime?
   googleCalendarId   String  @default("primary")
   googleEmail        String  @default("")
+  // Cloche de notifications : tout ce qui date d'après ce moment est « non lu ».
+  notificationsSeenAt DateTime?
   updatedAt         DateTime @updatedAt
 }
 

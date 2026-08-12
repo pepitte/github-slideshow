@@ -5,6 +5,7 @@
 // Sur mobile, seules les icônes restent visibles (rail étroit).
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import AdminNotifications from "./AdminNotifications";
 
 const ICONS: Record<string, JSX.Element> = {
   dashboard: (
@@ -125,9 +126,10 @@ export default function AdminNav() {
 
   return (
     <aside className="sticky top-0 flex h-screen w-14 shrink-0 flex-col border-r border-leaf-100 bg-white print:hidden sm:w-56">
-      <div className="flex items-center justify-center px-2 py-4 sm:justify-start sm:px-4">
+      <div className="flex flex-col items-center gap-2 px-2 py-4 sm:flex-row sm:justify-between sm:px-4">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logo.png" alt="Arboris Paysage" className="h-9 w-auto max-w-full object-contain" />
+        <AdminNotifications />
       </div>
 
       <nav className="flex flex-1 flex-col gap-1 px-2 py-2">
