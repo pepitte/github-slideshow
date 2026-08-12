@@ -173,13 +173,19 @@ export default function ClientAccount() {
 
   const now = Date.now();
   const rdvs = useMemo(() => regrouper(bookings), [bookings]);
-  // Un devis « sans date » (créé par le gérant) reste dans « À venir ».
+  // Un devis « sans date » (créé par le gérant) reste dans « À venir », mais en
+  // fin de liste : « Votre prochain rendez-vous » doit être un vrai prochain
+  // rendez-vous, pas un « Date à définir ».
   const aVenir = rdvs
     .filter(
       (r) =>
         r.principal.status !== "annule" && (!r.fin || new Date(r.fin).getTime() >= now)
     )
-    .reverse(); // le plus proche en premier
+    .sort((a, b) => {
+      if (!a.debut) return 1;
+      if (!b.debut) return -1;
+      return a.debut.localeCompare(b.debut); // le plus proche en premier
+    });
   const passes = rdvs.filter(
     (r) =>
       r.principal.status === "annule" || (r.fin != null && new Date(r.fin).getTime() < now)
@@ -314,7 +320,7 @@ export default function ClientAccount() {
               Demander un devis gratuit
             </Link>
             <Link href="/#chantier" className="btn-secondary flex-1 text-center">
-              Réserver un chantier
+              Rendez-vous chantier
             </Link>
           </div>
 
