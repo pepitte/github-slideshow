@@ -7,6 +7,7 @@ import { Fragment, useEffect, useState } from "react";
 import FicheContact from "./FicheContact";
 import AddressAutocomplete, { type AddressValue } from "@/components/AddressAutocomplete";
 import { telFr } from "@/lib/rdvLabels";
+import { ETAPE_PAR_ID, SUIVI_SIMPLE } from "@/lib/pipeline";
 
 export type Contact = {
   id: string;
@@ -28,6 +29,8 @@ export type Contact = {
   contrat: "annuel" | "ponctuel";
   affairesCount: number;
   perdu: boolean;
+  affaireId: string | null;
+  affaireStatut: string;
   dernierEchange: string | null;
 };
 
@@ -37,15 +40,6 @@ type AgenceLite = { id: string; nom: string; couleur: string };
 function euros(n: number): string {
   return n.toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
 }
-function dateCourte(iso: string | null): string {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("fr-FR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-}
-
 /** Tuile de synthèse : le chiffre d'abord, l'explication ensuite. */
 function Tuile({
   label,
@@ -116,6 +110,7 @@ export default function AdminClientsPage() {
   const [agence, setAgence] = useState("");
   const [ouvert, setOuvert] = useState<string | null>(null);
   const [nouveau, setNouveau] = useState(false);
+  const [majStatut, setMajStatut] = useState("");
   const [brouillon, setBrouillon] = useState({
     firstName: "",
     lastName: "",
@@ -166,6 +161,25 @@ export default function AdminClientsPage() {
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q, agence]);
+
+  /**
+   * Suivi commercial depuis la liste. La vérité vit dans l'affaire du client :
+   * on met à jour l'affichage tout de suite, puis on recharge pour récupérer
+   * l'identifiant de l'affaire créée le cas échéant.
+   */
+  async function changerSuivi(c: Contact, statut: string) {
+    if (!statut) return;
+    setMajStatut(c.id);
+    setContacts((l) => l.map((x) => (x.id === c.id ? { ...x, affaireStatut: statut } : x)));
+    const res = await fetch(`/api/admin/contacts/${c.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ statut }),
+    });
+    setMajStatut("");
+    if (res.ok) charger();
+    else setContacts((l) => l.map((x) => (x.id === c.id ? { ...x, affaireStatut: c.affaireStatut } : x)));
+  }
 
   async function creer() {
     const res = await fetch("/api/admin/contacts", {
@@ -307,10 +321,7 @@ export default function AdminClientsPage() {
                 <th className="whitespace-nowrap px-3 py-3 font-semibold">Nom</th>
                 <th className="px-3 py-3 font-semibold">Téléphone</th>
                 <th className="px-3 py-3 font-semibold">Email</th>
-                <th className="px-3 py-3 font-semibold">Adresse</th>
-                <th className="whitespace-nowrap px-3 py-3 font-semibold">Contrat</th>
-                <th className="whitespace-nowrap px-3 py-3 text-right font-semibold">CA généré</th>
-                <th className="whitespace-nowrap px-3 py-3 font-semibold">Dernier échange</th>
+                <th className="px-3 py-3 font-semibold">Où en est-on ?</th>
               </tr>
             </thead>
             <tbody>
@@ -348,30 +359,37 @@ export default function AdminClientsPage() {
                       <td className="max-w-[13rem] truncate px-3 py-3 text-leaf-800/80" title={c.email}>
                         {c.email || "—"}
                       </td>
-                      <td className="max-w-[15rem] truncate px-3 py-3 text-leaf-800/70" title={lieu}>
-                        {lieu || "—"}
-                      </td>
-                      <td className="px-3 py-3">
-                        <span
-                          className={`whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                            c.contrat === "annuel"
-                              ? "bg-leaf-100 text-leaf-800"
-                              : "bg-sand-50 text-leaf-800/60"
+                      {/* Le clic sur la ligne ouvre la fiche : il ne doit pas
+                          traverser le sélecteur. */}
+                      <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                        <select
+                          value={c.affaireStatut}
+                          disabled={majStatut === c.id}
+                          onChange={(e) => changerSuivi(c, e.target.value)}
+                          className={`w-full max-w-[13rem] cursor-pointer rounded-lg border-0 px-2 py-1.5 text-[12px] font-semibold outline-none ring-1 ring-inset ring-leaf-200 focus:ring-leaf-600 disabled:opacity-50 ${
+                            SUIVI_SIMPLE.find((o) => o.id === c.affaireStatut)?.couleur ??
+                            "bg-white text-leaf-800/60"
                           }`}
                         >
-                          {c.contrat === "annuel" ? "Contrat annuel" : "Ponctuel"}
-                        </span>
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-3 text-right font-semibold tabular-nums text-leaf-700">
-                        {c.caGenere > 0 ? euros(c.caGenere) : "—"}
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-3 tabular-nums text-leaf-800/70">
-                        {dateCourte(c.dernierEchange)}
+                          <option value="">— à qualifier —</option>
+                          {SUIVI_SIMPLE.map((o) => (
+                            <option key={o.id} value={o.id}>
+                              {o.label}
+                            </option>
+                          ))}
+                          {/* Étape posée depuis la page Affaires et absente des
+                              cinq choix : on l'affiche plutôt que de la perdre. */}
+                          {c.affaireStatut && !SUIVI_SIMPLE.some((o) => o.id === c.affaireStatut) && (
+                            <option value={c.affaireStatut}>
+                              {ETAPE_PAR_ID[c.affaireStatut]?.label ?? c.affaireStatut}
+                            </option>
+                          )}
+                        </select>
                       </td>
                     </tr>
                     {estOuvert && (
                       <tr>
-                        <td colSpan={8} className="p-0">
+                        <td colSpan={5} className="p-0">
                           <FicheContact id={c.id} agences={agences} onChange={charger} />
                         </td>
                       </tr>
