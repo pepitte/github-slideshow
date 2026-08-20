@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { isAdminAuthenticated } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
 import { appUrl } from "@/lib/templates";
+import { metaRedirectUri } from "@/lib/meta";
 
 export const dynamic = "force-dynamic";
 
@@ -26,11 +27,9 @@ async function status() {
     leadsEnabled: s.metaLeadsEnabled,
     verifyToken: s.metaVerifyToken,
     webhookUrl: `${appUrl()}/api/meta/webhook`,
-    // Voie simple : l'adresse à coller dans Zapier / Make, clé comprise.
-    // La clé n'ouvre que le dépôt de prospects, rien d'autre.
-    zapierUrl: s.leadsApiKey
-      ? `${appUrl()}/api/leads/inbound?key=${s.leadsApiKey}`
-      : "",
+    // Facebook refuse la connexion si cette adresse n'est pas déclarée dans
+    // « Facebook Login → Valid OAuth Redirect URIs » : il faut la montrer.
+    redirectUri: metaRedirectUri(appUrl()),
     leads,
     aTraiter,
   };
@@ -69,11 +68,6 @@ export async function PUT(req: NextRequest) {
   // Le jeton de vérification du webhook est généré une fois pour toutes.
   const current = await getSettings();
   if (!current.metaVerifyToken) data.metaVerifyToken = crypto.randomBytes(16).toString("hex");
-
-  // Clé de la voie Zapier : générée à la demande, régénérable si elle fuite.
-  if (body.genererCleZapier === true || (body.genererCleZapier === "rotate" && current.leadsApiKey)) {
-    data.leadsApiKey = crypto.randomBytes(24).toString("hex");
-  }
 
   await prisma.settings.update({ where: { id: "main" }, data });
   return NextResponse.json(await status());

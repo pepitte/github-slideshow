@@ -109,7 +109,7 @@ const LINKS = [
   { href: "/admin/chantiers", label: "Chantiers", icon: "chantiers" },
   { href: "/admin/terrain", label: "Gestion terrain", icon: "terrain" },
   { href: "/admin/stats", label: "Statistiques", icon: "stats" },
-  { href: "/admin/meta", label: "Publicités Meta", icon: "meta" },
+  { href: "/admin/meta", label: "Leads Meta", icon: "meta" },
   { href: "/admin/facturation", label: "Devis & Factures", icon: "facturation" },
   { href: "/admin/pros", label: "Professionnels", icon: "pros" },
   { href: "/admin/parametres", label: "Paramètres", icon: "params" },
