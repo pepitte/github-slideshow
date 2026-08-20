@@ -57,9 +57,19 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     data.phone = body.phone.trim();
     data.phoneKey = phoneKeyOf(body.phone);
   }
-  // « Déjà contacté » depuis le tableau de bord : sort le lead de la liste.
+  // Suivi rapide depuis le tableau de bord. Chaque geste laisse une trace dans
+  // le journal du contact : sa fiche doit raconter ce qui s'est passé.
+  let journal = "";
   if (body.contacte !== undefined) {
     data.contacteAt = body.contacte ? new Date() : null;
+    if (body.contacte) {
+      data.relanceAt = null;
+      journal = "Marqué « déjà contacté » depuis le tableau de bord.";
+    }
+  }
+  if (body.relance !== undefined) {
+    data.relanceAt = body.relance ? new Date() : null;
+    if (body.relance) journal = "Marqué « à recontacter » depuis le tableau de bord.";
   }
   if (body.agenceId !== undefined) {
     const brut = String(body.agenceId ?? "").trim();
@@ -67,6 +77,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 
   const contact = await prisma.contact.update({ where: { id: params.id }, data });
+  if (journal) {
+    await journaliser(contact.id, "appel", journal, { sens: "sortant", auteur: "gerant" });
+  }
   return NextResponse.json({ ok: true, contact });
 }
 
