@@ -54,9 +54,13 @@ export async function GET() {
       // prospects Meta, 101 fiches créées le jour même restaient invisibles ici
       // — exactement celles qu'il fallait rappeler. C'est le gérant qui décide
       // quand un lead sort de la liste, pas l'horloge.
+      //
+      // Un lead marqué « déjà contacté » reste affiché 24 h, en vert : sinon il
+      // disparaît à l'instant du clic et le gérant perd de vue ce qu'il vient
+      // de faire. Passé ce délai, la liste se nettoie d'elle-même.
       prisma.contact.findMany({
         where: {
-          contacteAt: null,
+          OR: [{ contacteAt: null }, { contacteAt: { gte: new Date(Date.now() - 24 * 3600_000) } }],
           affaires: { none: {} },
           bookings: { none: {} },
         },
@@ -72,6 +76,7 @@ export async function GET() {
           createdAt: true,
           notes: true,
           relanceAt: true,
+          contacteAt: true,
           // Le premier message reçu dit ce que le prospect demande : c'est
           // cette phrase que le gérant lit pour décider quoi faire.
           interactions: {
