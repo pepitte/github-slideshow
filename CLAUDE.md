@@ -113,10 +113,17 @@ Branche de travail : `claude/landscaping-booking-platform-ejx6ap`.
   l'admin (`Settings.metaPixelId`, transmis par le layout au composant
   MetaPixel ; variable d'env en repli). Pixel + bannière RGPD masqués sur
   `/admin` et `/pro` (ils y interceptaient les clics).
-- **Publicités Meta** (`/admin/meta`, entrée barre latérale, `lib/meta.ts`) :
+- **Leads Meta** (`/admin/meta`, entrée barre latérale, `lib/meta.ts`) —
+  **en service depuis le 20 août**, page Arborispaysage reliée :
   connexion OAuth du compte Facebook/Instagram (scopes pages_show_list,
-  pages_manage_metadata, leads_retrieval, business_management), choix de la
-  page et abonnement à l'événement `leadgen`. Les prospects des formulaires
+  pages_manage_metadata, **pages_manage_ads**, leads_retrieval,
+  business_management), choix de la page et abonnement à l'événement `leadgen`.
+  Les URL (redirection OAuth, webhook) sont déduites de la requête
+  (`requestBaseUrl`) et non de `NEXT_PUBLIC_APP_URL` : le site répond sur
+  `arborispaysage.eu` **et** sur l'adresse Vercel, et un aller-retour OAuth qui
+  change de domaine perd la session et le jeton anti-CSRF — c'est ce qui
+  empêchait toute connexion. Un échec d'abonnement `leadgen` ne fait plus perdre
+  la page reliée (l'import de rattrapage n'en dépend pas). Les prospects des formulaires
   publicitaires arrivent via `/api/meta/webhook` (défi de vérification +
   signature X-Hub-Signature-256 vérifiée en HMAC), sont dédupliqués par
   `Lead.externalId` et déclenchent `notifyOwnerNewLead`. Import de rattrapage
@@ -271,7 +278,7 @@ Docs : `app/ARCHITECTURE.md`.
   #2563eb / #16a34a validées pour le daltonisme.
 - **Espace gérant** : barre latérale gauche (layout `/admin`, composant AdminNav)
   avec logo, icônes SVG (Tableau de bord, Tous les clients, Affaires, Agenda,
-  Agenda d'équipe, Gestion terrain, Statistiques, Publicités Meta,
+  Agenda d'équipe, Gestion terrain, Statistiques, Leads Meta,
   Devis & Factures, Professionnels, Paramètres) et Déconnexion en bas ; rail d'icônes seul sur
   mobile ; absente de `/admin/login`. Inspirée de la maquette du client.
   Tableau de bord : **recherche** (nom, tel, email, ville, CP, adresse,
@@ -357,7 +364,17 @@ client) : navigation intégrée comme le vrai site — « Se connecter » en hau
   rappel « 24 h » (texte par défaut : « a lieu **demain** ») part en réalité le
   matin même. Correctif proposé : un cron externe gratuit (cron-job.org) qui
   appelle l'URL toutes les 15 min (`?secret=` accepté), sinon adapter les textes.
-- Clés API restant à fournir : Google (OAuth + Places), Twilio, Meta Pixel ID.
+- Clés API restant à fournir : Google (OAuth + Places), Twilio.
+- **Meta configuré le 20 août** (application « Site internet »,
+  ID 1839921310719820, mode développement — suffisant pour sa propre page, la
+  revue Meta ne concerne que les éditeurs tiers). Trois pièges rencontrés, dans
+  l'ordre : URI de redirection non déclarée chez Facebook (« URL bloquée ») ;
+  `leads_retrieval` absent tant que le cas d'utilisation **« Capturer et gérer
+  les prospects publicitaires avec l'API Marketing »** n'est pas ajouté (il
+  n'est ni dans « Gérez des Pages » ni dans celui des publicités) ;
+  `pages_manage_ads` exigé pour l'abonnement leadgen ET pour lister les
+  formulaires. Statut « Prête pour le test » suffit, ne pas soumettre au
+  Contrôle app.
 - Nom de domaine personnalisé (l'icône PWA affichera alors le vrai domaine).
 - Validation serveur email/téléphone sur `/api/bookings` (le formulaire bloque
   déjà les valeurs invalides, l'API publique non) — signalé au client, non
