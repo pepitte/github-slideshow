@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isAdminAuthenticated } from "@/lib/auth";
 import { journaliser, phoneKeyOf } from "@/lib/contacts";
+import { affaireOuverteDe, changerStatut, creerAffaire } from "@/lib/affaires";
+import { ETAPE_PAR_ID } from "@/lib/pipeline";
 
 export const dynamic = "force-dynamic";
 
@@ -74,6 +76,29 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (body.agenceId !== undefined) {
     const brut = String(body.agenceId ?? "").trim();
     data.agenceId = brut && (await prisma.agence.findUnique({ where: { id: brut } })) ? brut : null;
+  }
+
+  // Suivi commercial posé depuis la liste des clients. La vérité reste dans
+  // l'affaire : un contact sans affaire en obtient une, plutôt qu'un second
+  // état parallèle qui finirait par contredire la page Affaires.
+  if (typeof body.statut === "string" && ETAPE_PAR_ID[body.statut]) {
+    const existante =
+      (await affaireOuverteDe(params.id, "chantier")) ??
+      (await prisma.affaire.findFirst({
+        where: { contactId: params.id },
+        orderBy: { updatedAt: "desc" },
+      }));
+    if (existante) {
+      await changerStatut(existante.id, body.statut);
+    } else {
+      await creerAffaire({
+        contactId: params.id,
+        address: existe.address,
+        postalCode: existe.postalCode,
+        city: existe.city,
+        statut: body.statut,
+      });
+    }
   }
 
   const contact = await prisma.contact.update({ where: { id: params.id }, data });

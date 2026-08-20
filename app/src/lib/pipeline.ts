@@ -48,6 +48,20 @@ export const ETAPES: Etape[] = [
     aide: "Annulation — neutre dans les statistiques" },
 ];
 
+/**
+ * Vocabulaire simplifié du gérant, pour le suivi rapide depuis la liste des
+ * clients : cinq états qui couvrent son quotidien, dits avec ses mots. Ce sont
+ * les mêmes étapes que le pipeline — un seul `statut` reste la source de
+ * vérité, la page Affaires en montre simplement le détail complet.
+ */
+export const SUIVI_SIMPLE: { id: string; label: string; couleur: string }[] = [
+  { id: "devis_a_faire", label: "En attente de devis", couleur: "bg-sand-50 text-leaf-800/80" },
+  { id: "devis_envoye", label: "Devis envoyé", couleur: "bg-amber-100 text-amber-800" },
+  { id: "gagne", label: "Chantier à programmer", couleur: "bg-blue-100 text-blue-800" },
+  { id: "chantier_en_cours", label: "Chantier en cours", couleur: "bg-leaf-100 text-leaf-800" },
+  { id: "termine", label: "Chantier terminé", couleur: "bg-leaf-600/15 text-leaf-800" },
+];
+
 export const ETAPE_PAR_ID: Record<string, Etape> = Object.fromEntries(
   ETAPES.map((e) => [e.id, e])
 );

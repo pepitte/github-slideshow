@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
     ids.length
       ? prisma.affaire.findMany({
           where: { contactId: { in: ids } },
-          select: { contactId: true, statut: true, montant: true, projectType: true },
+          select: { id: true, contactId: true, statut: true, montant: true, projectType: true, updatedAt: true },
         })
       : [],
     ids.length
@@ -102,6 +102,19 @@ export async function GET(req: NextRequest) {
   for (const b of rdv) {
     if (b.contactId && b.projectType === "contrat_annuel") de(b.contactId).contrat = true;
   }
+  // L'affaire à montrer dans la liste : la plus récemment bougée. Un contact
+  // peut en porter plusieurs, mais la colonne n'a la place que d'une seule —
+  // la page Affaires reste l'endroit pour les voir toutes.
+  const courante = new Map<string, { id: string; statut: string; quand: number }>();
+  for (const a of affaires) {
+    if (!a.contactId) continue;
+    const quand = a.updatedAt.getTime();
+    const actuelle = courante.get(a.contactId);
+    if (!actuelle || quand > actuelle.quand) {
+      courante.set(a.contactId, { id: a.id, statut: a.statut, quand });
+    }
+  }
+
   const dernierEchange = new Map<string, string>();
   for (const d of derniers) {
     if (d._max.createdAt) dernierEchange.set(d.contactId, d._max.createdAt.toISOString());
@@ -134,6 +147,8 @@ export async function GET(req: NextRequest) {
         contrat: r?.contrat ? "annuel" : "ponctuel",
         affairesCount: r?.affaires ?? 0,
         perdu: r?.perdu ?? false,
+        affaireId: courante.get(c.id)?.id ?? null,
+        affaireStatut: courante.get(c.id)?.statut ?? "",
         dernierEchange: dernierEchange.get(c.id) ?? null,
       };
     }),
