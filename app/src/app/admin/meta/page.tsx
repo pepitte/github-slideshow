@@ -38,6 +38,8 @@ type Status = {
 
 const MESSAGES: Record<string, string> = {
   ok: "Compte Meta connecté et page reliée : les prospects arriveront ici automatiquement.",
+  sans_temps_reel:
+    "Page reliée. L'arrivée automatique n'a pas pu être activée : utilisez « Importer les prospects existants », et reconnectez le compte pour réessayer.",
   choisir_page: "Compte connecté. Choisissez la page Facebook qui diffuse vos publicités.",
   aucune_page: "Compte connecté, mais aucune page Facebook n'y est rattachée.",
   refuse: "Connexion annulée.",

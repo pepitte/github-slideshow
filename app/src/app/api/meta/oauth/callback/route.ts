@@ -31,17 +31,32 @@ export async function GET(req: NextRequest) {
     const pages = await listPages(userToken);
 
     const data: Record<string, unknown> = { metaUserToken: userToken, metaConnectedAt: new Date() };
+    // L'abonnement temps réel peut échouer (autorisation manquante) sans que la
+    // page soit inutilisable : reliée, elle permet déjà l'import des prospects.
+    // On garde donc la connexion et on signale seulement le temps réel.
+    let abonnee = true;
     if (pages.length === 1) {
-      await subscribePageToLeads(pages[0]);
+      try {
+        await subscribePageToLeads(pages[0]);
+      } catch (e) {
+        abonnee = false;
+        console.error("Abonnement leadgen refusé:", e);
+      }
       data.metaPageId = pages[0].id;
       data.metaPageName = pages[0].name;
       data.metaPageToken = pages[0].access_token;
     }
     await prisma.settings.update({ where: { id: "main" }, data });
 
-    const res = NextResponse.redirect(
-      `${base}?meta=${pages.length === 1 ? "ok" : pages.length ? "choisir_page" : "aucune_page"}`
-    );
+    const etat =
+      pages.length === 1
+        ? abonnee
+          ? "ok"
+          : "sans_temps_reel"
+        : pages.length
+          ? "choisir_page"
+          : "aucune_page";
+    const res = NextResponse.redirect(`${base}?meta=${etat}`);
     res.cookies.delete("meta_oauth_state");
     return res;
   } catch (e) {
