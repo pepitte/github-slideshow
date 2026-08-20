@@ -153,6 +153,12 @@ export default function AdminClientsPage() {
       .catch(() => {});
   }, []);
 
+  // Arrivée depuis « Leads à traiter » : la recherche est déjà remplie.
+  useEffect(() => {
+    const cherche = new URLSearchParams(window.location.search).get("q");
+    if (cherche) setQ(cherche);
+  }, []);
+
   useEffect(() => {
     const t = setTimeout(charger, 300);
     return () => clearTimeout(t);

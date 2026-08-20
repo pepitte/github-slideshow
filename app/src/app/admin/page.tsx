@@ -19,10 +19,12 @@ type ATraiter = {
   id: string;
   firstName: string;
   lastName: string;
+  phone: string;
   origine: string;
   city: string;
   createdAt: string;
-  notes: string;
+  /** Ce que le prospect demande, en une ligne. */
+  demande: string;
   jours: number;
 };
 type Prochain = {
@@ -77,14 +79,18 @@ function dateHeure(iso: string): string {
   });
 }
 
-/** Étiquette courte de l'origine, pour la pastille de la liste « à traiter ». */
+/**
+ * Étiquette courte de l'origine, pour la pastille de la liste des leads. Les
+ * libellés tiennent en un mot : au-delà, la pastille passe à la ligne et casse
+ * le rythme à deux lignes de chaque entrée.
+ */
 const ORIGINE_COURTE: Record<string, { court: string; classe: string }> = {
   meta: { court: "PUB", classe: "bg-violet-100 text-violet-700" },
-  web: { court: "SITE", classe: "bg-blue-100 text-blue-700" },
-  site: { court: "FORMULAIRE", classe: "bg-leaf-100 text-leaf-800" },
-  phone: { court: "TÉLÉPHONE", classe: "bg-amber-100 text-amber-800" },
+  web: { court: "EN LIGNE", classe: "bg-blue-100 text-blue-700" },
+  site: { court: "SITE", classe: "bg-leaf-100 text-leaf-800" },
+  phone: { court: "APPEL", classe: "bg-amber-100 text-amber-800" },
   manual: { court: "SAISI", classe: "bg-sand-50 text-leaf-800/70" },
-  recommandation: { court: "BOUCHE À OREILLE", classe: "bg-sand-50 text-leaf-800/70" },
+  recommandation: { court: "RECO", classe: "bg-sand-50 text-leaf-800/70" },
 };
 
 /** Tuile de synthèse : le chiffre d'abord, la comparaison ensuite. */
@@ -285,63 +291,68 @@ export default function AdminDashboard() {
 
         <section className="card">
           <div className="flex items-center justify-between gap-2">
-            <h2 className="font-bold">
-              À traiter{" "}
+            <h2 className="flex items-center gap-2 font-bold">
+              Leads à traiter
               {aTraiter.length > 0 && (
-                <span className="ml-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-700">
+                <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-700">
                   {aTraiter.length}
                 </span>
               )}
             </h2>
-            <Link href="/admin/clients" className="text-sm font-semibold text-leaf-700 underline">
+            <Link href="/admin/clients" className="text-sm font-semibold text-leaf-700 hover:underline">
               Voir tout
             </Link>
           </div>
-          <p className="mb-3 text-sm text-leaf-800/60">
-            Demandes reçues il y a plus de 24 h, sans rendez-vous ni devis
-          </p>
+          <p className="text-sm text-leaf-800/60">Entrants depuis plus de 24 h</p>
 
           {aTraiter.length === 0 ? (
             <p className="py-8 text-center text-sm text-leaf-800/50">
               Rien en attente — toutes les demandes reçues ont été prises en main.
             </p>
           ) : (
-            <ul className="space-y-2">
+            <ul className="-mx-2 mt-2">
               {aTraiter.map((c) => {
                 const o = ORIGINE_COURTE[c.origine] ?? {
                   court: (ORIGINES[c.origine] ?? c.origine).toUpperCase(),
                   classe: "bg-sand-50 text-leaf-800/70",
                 };
+                const nom = `${c.firstName} ${c.lastName}`.trim() || "Sans nom";
                 return (
-                  <li key={c.id} className="flex items-center gap-2.5">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-leaf-50 text-xs font-bold text-leaf-800">
-                      {initiales(c.firstName, c.lastName)}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="flex flex-wrap items-center gap-1.5">
-                        <span className="truncate text-sm font-semibold">
-                          {`${c.firstName} ${c.lastName}`.trim() || "Sans nom"}
+                  <li key={c.id}>
+                    {/* La recherche par téléphone retrouve la fiche même très
+                        ancienne : la liste des clients ne charge que les
+                        derniers, un lien par identifiant tomberait à vide. */}
+                    <Link
+                      href={`/admin/clients?q=${encodeURIComponent(c.phone || nom)}`}
+                      className="flex items-center gap-3 rounded-xl px-2 py-2.5 transition hover:bg-leaf-50"
+                    >
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-leaf-100 bg-white text-xs font-bold text-leaf-800/70">
+                        {initiales(c.firstName, c.lastName)}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="flex flex-wrap items-center gap-1.5">
+                          <span className="truncate text-sm font-semibold text-leaf-900">{nom}</span>
+                          <span className={`shrink-0 whitespace-nowrap rounded px-1.5 py-0.5 text-[10px] font-bold ${o.classe}`}>
+                            {o.court}
+                          </span>
                         </span>
-                        <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${o.classe}`}>
-                          {o.court}
+                        <span className="block truncate text-xs text-leaf-800/60">
+                          {c.demande || "Aucune précision"}
                         </span>
                       </span>
-                      <span className="block truncate text-xs text-leaf-800/60">
-                        {c.city || c.notes || "Aucune précision"}
+                      <span className="shrink-0 text-right">
+                        <span
+                          className={`block text-xs font-bold ${
+                            c.jours >= 7 ? "text-red-600" : "text-amber-600"
+                          }`}
+                        >
+                          {c.jours} jour{c.jours > 1 ? "s" : ""}
+                        </span>
+                        <span className="block text-[11px] tabular-nums text-leaf-800/50">
+                          {dateHeure(c.createdAt)}
+                        </span>
                       </span>
-                    </span>
-                    <span className="shrink-0 text-right">
-                      <span
-                        className={`block text-xs font-bold ${
-                          c.jours >= 7 ? "text-red-600" : "text-amber-700"
-                        }`}
-                      >
-                        {c.jours} jour{c.jours > 1 ? "s" : ""}
-                      </span>
-                      <span className="block text-[11px] text-leaf-800/50">
-                        {dateHeure(c.createdAt)}
-                      </span>
-                    </span>
+                    </Link>
                   </li>
                 );
               })}
