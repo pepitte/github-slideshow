@@ -57,6 +57,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     data.phone = body.phone.trim();
     data.phoneKey = phoneKeyOf(body.phone);
   }
+  // « Déjà contacté » depuis le tableau de bord : sort le lead de la liste.
+  if (body.contacte !== undefined) {
+    data.contacteAt = body.contacte ? new Date() : null;
+  }
   if (body.agenceId !== undefined) {
     const brut = String(body.agenceId ?? "").trim();
     data.agenceId = brut && (await prisma.agence.findUnique({ where: { id: brut } })) ? brut : null;

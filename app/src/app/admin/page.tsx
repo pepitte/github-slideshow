@@ -214,6 +214,8 @@ export default function AdminDashboard() {
   const [tuiles, setTuiles] = useState<Tuiles | null>(null);
   const [mois, setMois] = useState<Mois[]>([]);
   const [aTraiter, setATraiter] = useState<ATraiter[]>([]);
+  const [aTraiterTotal, setATraiterTotal] = useState(0);
+  const [enCours, setEnCours] = useState("");
   const [prochains, setProchains] = useState<Prochain[]>([]);
 
   useEffect(() => {
@@ -229,10 +231,26 @@ export default function AdminDashboard() {
         setTuiles(d.tuiles ?? null);
         setMois(d.mois ?? []);
         setATraiter(d.aTraiter ?? []);
+        setATraiterTotal(d.aTraiterTotal ?? (d.aTraiter ?? []).length);
         setProchains(d.prochains ?? []);
       })
       .catch(() => {});
   }, []);
+
+  /** « Déjà contacté » : le lead quitte la liste, sa fiche est inchangée. */
+  async function marquerContacte(c: ATraiter) {
+    setEnCours(c.id);
+    const res = await fetch(`/api/admin/contacts/${c.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contacte: true }),
+    });
+    setEnCours("");
+    if (res.ok) {
+      setATraiter((l) => l.filter((x) => x.id !== c.id));
+      setATraiterTotal((n) => Math.max(0, n - 1));
+    }
+  }
 
   if (!tuiles) {
     return <main className="mx-auto max-w-6xl px-4 py-10 text-center text-leaf-800/60">Chargement…</main>;
@@ -293,9 +311,9 @@ export default function AdminDashboard() {
           <div className="flex items-center justify-between gap-2">
             <h2 className="flex items-center gap-2 font-bold">
               Leads à traiter
-              {aTraiter.length > 0 && (
+              {aTraiterTotal > 0 && (
                 <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-700">
-                  {aTraiter.length}
+                  {aTraiterTotal}
                 </span>
               )}
             </h2>
@@ -303,7 +321,9 @@ export default function AdminDashboard() {
               Voir tout
             </Link>
           </div>
-          <p className="text-sm text-leaf-800/60">Entrants depuis plus de 24 h</p>
+          <p className="text-sm text-leaf-800/60">
+            Sans rendez-vous ni devis — marquez « contacté » quand c'est fait
+          </p>
 
           {aTraiter.length === 0 ? (
             <p className="py-8 text-center text-sm text-leaf-800/50">
@@ -318,13 +338,13 @@ export default function AdminDashboard() {
                 };
                 const nom = `${c.firstName} ${c.lastName}`.trim() || "Sans nom";
                 return (
-                  <li key={c.id}>
+                  <li key={c.id} className="group relative">
                     {/* La recherche par téléphone retrouve la fiche même très
                         ancienne : la liste des clients ne charge que les
                         derniers, un lien par identifiant tomberait à vide. */}
                     <Link
                       href={`/admin/clients?q=${encodeURIComponent(c.phone || nom)}`}
-                      className="flex items-center gap-3 rounded-xl px-2 py-2.5 transition hover:bg-leaf-50"
+                      className="flex items-center gap-3 rounded-xl px-2 py-2.5 pr-9 transition hover:bg-leaf-50"
                     >
                       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-leaf-100 bg-white text-xs font-bold text-leaf-800/70">
                         {initiales(c.firstName, c.lastName)}
@@ -343,16 +363,34 @@ export default function AdminDashboard() {
                       <span className="shrink-0 text-right">
                         <span
                           className={`block text-xs font-bold ${
-                            c.jours >= 7 ? "text-red-600" : "text-amber-600"
+                            c.jours >= 7
+                              ? "text-red-600"
+                              : c.jours === 0
+                                ? "text-leaf-700"
+                                : "text-amber-600"
                           }`}
                         >
-                          {c.jours} jour{c.jours > 1 ? "s" : ""}
+                          {c.jours === 0
+                            ? "aujourd'hui"
+                            : `${c.jours} jour${c.jours > 1 ? "s" : ""}`}
                         </span>
                         <span className="block text-[11px] tabular-nums text-leaf-800/50">
                           {dateHeure(c.createdAt)}
                         </span>
                       </span>
                     </Link>
+                    {/* Hors du lien : un clic ici ne doit pas ouvrir la fiche. */}
+                    <button
+                      onClick={() => marquerContacte(c)}
+                      disabled={enCours === c.id}
+                      title={`Marquer ${nom} comme déjà contacté`}
+                      aria-label={`Marquer ${nom} comme déjà contacté`}
+                      className="absolute right-1 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-leaf-800/30 transition hover:bg-white hover:text-leaf-700 disabled:opacity-40"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-4 w-4">
+                        <path d="m4 12 5 5L20 6" />
+                      </svg>
+                    </button>
                   </li>
                 );
               })}
