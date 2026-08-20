@@ -31,6 +31,7 @@ type Status = {
   leadsEnabled: boolean;
   verifyToken: string;
   webhookUrl: string;
+  zapierUrl: string;
   leads: Lead[];
   aTraiter: number;
 };
@@ -116,6 +117,25 @@ export default function AdminMetaPage() {
       setAppSecret("");
       setInfo("Réglages enregistrés.");
     } else setErreur("Enregistrement impossible.");
+  }
+
+  /** Génère (ou régénère) la clé de la voie Zapier. */
+  async function cleZapier(rotate: boolean) {
+    if (rotate && !window.confirm(
+      "Générer une nouvelle clé ? L'ancienne adresse cessera de fonctionner : il faudra recoller la nouvelle dans Zapier."
+    )) return;
+    setBusy(true);
+    setErreur("");
+    const res = await fetch("/api/admin/meta", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ genererCleZapier: rotate ? "rotate" : true }),
+    });
+    setBusy(false);
+    if (res.ok) {
+      apply(await res.json());
+      setInfo("Adresse prête : collez-la dans Zapier ou Make.");
+    } else setErreur("Génération impossible.");
   }
 
   async function loadPages() {
@@ -335,6 +355,51 @@ export default function AdminMetaPage() {
           </p>
           <Copiable label="URL de rappel" value={s.webhookUrl} />
           <Copiable label="Jeton de vérification" value={s.verifyToken || "— enregistrez l'étape 1"} />
+        </section>
+
+        {/* Voie simple : Zapier / Make. Sans revue d'application Meta. */}
+        <section className="card space-y-3 border-2 border-leaf-200">
+          <div>
+            <h2 className="font-bold">La voie simple : Zapier ou Make</h2>
+            <p className="mt-1 text-sm text-leaf-800/70">
+              Les étapes 1 à 3 exigent que Meta valide votre application (revue et vérification
+              d&apos;entreprise), ce qui prend des semaines. Zapier et Make sont déjà validés par
+              Meta : ils reçoivent vos prospects tout de suite et les déposent ici.
+            </p>
+          </div>
+
+          {s.zapierUrl ? (
+            <>
+              <Copiable label="Adresse à coller dans Zapier (contient votre clé)" value={s.zapierUrl} />
+              <ol className="ml-5 list-decimal space-y-1 text-sm text-leaf-800/80">
+                <li>Sur zapier.com, créez un Zap.</li>
+                <li>
+                  Déclencheur : <b>Facebook Lead Ads</b> → <i>New Lead</i>, puis connectez votre page.
+                </li>
+                <li>
+                  Action : <b>Webhooks by Zapier</b> → <i>POST</i>. Collez l&apos;adresse ci-dessus dans
+                  <b> URL</b>, mettez <b>Payload Type : JSON</b>.
+                </li>
+                <li>
+                  Dans <b>Data</b>, ajoutez les lignes <code>name</code>, <code>phone</code>,{" "}
+                  <code>email</code>, <code>postal_code</code>, <code>message</code> et reliez-les aux
+                  champs de votre formulaire.
+                </li>
+                <li>Testez : le prospect apparaît aussitôt ci-dessous et vous recevez l&apos;alerte.</li>
+              </ol>
+              <p className="text-xs text-leaf-800/60">
+                Cette adresse ne permet que de déposer un prospect. Gardez-la pour vous ;
+                si elle circule, régénérez-la.
+              </p>
+              <button className="btn-secondary !w-auto !px-4 !py-2 text-sm" onClick={() => cleZapier(true)} disabled={busy}>
+                Générer une nouvelle adresse
+              </button>
+            </>
+          ) : (
+            <button className="btn-primary !w-auto !px-4 !py-2.5 text-sm" onClick={() => cleZapier(false)} disabled={busy}>
+              Créer mon adresse de réception
+            </button>
+          )}
         </section>
 
         {/* 4. Prospects reçus */}

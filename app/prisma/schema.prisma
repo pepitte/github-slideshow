@@ -72,6 +72,9 @@ model Settings {
   // Jeton de vérification à recopier dans le tableau de bord Meta
   metaVerifyToken   String   @default("")
   metaLeadsEnabled  Boolean  @default(true)
+  // Clé de la porte d'entrée « simple » : Zapier / Make y poste les prospects
+  // sans passer par la validation d'application Meta.
+  leadsApiKey       String   @default("")
   metaConnectedAt   DateTime?
   // Connexion Google Calendar (OAuth 2.0)
   googleRefreshToken String  @default("")
