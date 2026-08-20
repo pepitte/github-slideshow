@@ -16,6 +16,9 @@ const GRAPH = "https://graph.facebook.com/v21.0";
 export const META_SCOPES = [
   "pages_show_list",
   "pages_manage_metadata",
+  // Facebook exige aussi celle-ci pour abonner une Page à l'événement leadgen
+  // (« (#200) Requires pages_manage_ads permission to manage the object »).
+  "pages_manage_ads",
   "leads_retrieval",
   "business_management",
 ].join(",");

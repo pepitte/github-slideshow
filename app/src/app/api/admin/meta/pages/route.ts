@@ -42,12 +42,28 @@ export async function POST(req: NextRequest) {
     const pages = await listPages(settings.metaUserToken);
     const page = pages.find((p) => p.id === body.pageId);
     if (!page) return NextResponse.json({ error: "Page introuvable" }, { status: 404 });
-    await subscribePageToLeads(page);
+    // La page est reliée quoi qu'il arrive : sans l'abonnement temps réel,
+    // l'import des prospects fonctionne toujours.
+    let abonnee = true;
+    let avertissement = "";
+    try {
+      await subscribePageToLeads(page);
+    } catch (e) {
+      abonnee = false;
+      avertissement = (e as Error).message;
+      console.error("Abonnement leadgen refusé:", e);
+    }
     await prisma.settings.update({
       where: { id: "main" },
       data: { metaPageId: page.id, metaPageName: page.name, metaPageToken: page.access_token },
     });
-    return NextResponse.json({ ok: true, pageId: page.id, pageName: page.name });
+    return NextResponse.json({
+      ok: true,
+      pageId: page.id,
+      pageName: page.name,
+      abonnee,
+      avertissement,
+    });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 502 });
   }
