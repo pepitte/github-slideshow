@@ -27,6 +27,8 @@ type ATraiter = {
   demande: string;
   /** Date du dernier essai d'appel, si marqué « à recontacter ». */
   relanceAt: string | null;
+  /** Date du marquage « déjà contacté ». */
+  contacteAt: string | null;
   jours: number;
 };
 type Prochain = {
@@ -245,21 +247,30 @@ export default function AdminDashboard() {
    * Dans les deux cas la fiche client est intacte : rien n'est supprimé.
    */
   async function suivre(c: ATraiter, geste: "contacte" | "relance") {
+    // Recliquer sur un bouton déjà actif annule le marquage : une erreur de
+    // clic se répare sans passer par la fiche du client.
+    const actif = geste === "contacte" ? Boolean(c.contacteAt) : Boolean(c.relanceAt);
+    const valeur = !actif;
     setEnCours(c.id);
     const res = await fetch(`/api/admin/contacts/${c.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(geste === "contacte" ? { contacte: true } : { relance: true }),
+      body: JSON.stringify(geste === "contacte" ? { contacte: valeur } : { relance: valeur }),
     });
     setEnCours("");
     if (!res.ok) return;
-    if (geste === "contacte") {
-      setATraiter((l) => l.filter((x) => x.id !== c.id));
-      setATraiterTotal((n) => Math.max(0, n - 1));
-    } else {
-      const quand = new Date().toISOString();
-      setATraiter((l) => l.map((x) => (x.id === c.id ? { ...x, relanceAt: quand } : x)));
-    }
+    const quand = valeur ? new Date().toISOString() : null;
+    setATraiter((l) =>
+      l.map((x) =>
+        x.id !== c.id
+          ? x
+          : geste === "contacte"
+            ? // « Déjà contacté » clôt aussi une relance en attente.
+              { ...x, contacteAt: quand, relanceAt: valeur ? null : x.relanceAt }
+            : { ...x, relanceAt: quand }
+      )
+    );
+    if (geste === "contacte") setATraiterTotal((n) => Math.max(0, valeur ? n - 1 : n + 1));
   }
 
   if (!tuiles) {
@@ -332,7 +343,8 @@ export default function AdminDashboard() {
             </Link>
           </div>
           <p className="text-sm text-leaf-800/60">
-            Sans rendez-vous ni devis — marquez « contacté » quand c'est fait
+            Sans rendez-vous ni devis. Les lignes vertes sont faites, elles
+            disparaissent au bout de 24 h.
           </p>
 
           {aTraiter.length === 0 ? (
@@ -347,8 +359,14 @@ export default function AdminDashboard() {
                   classe: "bg-sand-50 text-leaf-800/70",
                 };
                 const nom = `${c.firstName} ${c.lastName}`.trim() || "Sans nom";
+                // Coup d'œil : la ligne entière prend la couleur de son état.
+                const fond = c.contacteAt
+                  ? "bg-leaf-50/70"
+                  : c.relanceAt
+                    ? "bg-amber-50/60"
+                    : "";
                 return (
-                  <li key={c.id} className="border-b border-leaf-50 last:border-0">
+                  <li key={c.id} className={`border-b border-leaf-50 last:border-0 ${fond}`}>
                     {/* La recherche par téléphone retrouve la fiche même très
                         ancienne : la liste des clients ne charge que les
                         derniers, un lien par identifiant tomberait à vide. */}
@@ -394,7 +412,12 @@ export default function AdminDashboard() {
                       <button
                         onClick={() => suivre(c, "contacte")}
                         disabled={enCours === c.id}
-                        className="flex items-center gap-1 rounded-lg border border-leaf-200 px-2 py-1 text-[11px] font-semibold text-leaf-800 transition hover:border-leaf-600 hover:bg-leaf-50 disabled:opacity-40"
+                        title={c.contacteAt ? "Annuler ce marquage" : "Marquer comme déjà contacté"}
+                        className={`flex items-center gap-1 rounded-lg border px-2 py-1 text-[11px] font-semibold transition disabled:opacity-40 ${
+                          c.contacteAt
+                            ? "border-leaf-600 bg-leaf-600 text-white"
+                            : "border-leaf-200 text-leaf-800 hover:border-leaf-600 hover:bg-leaf-50"
+                        }`}
                       >
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-3.5 w-3.5">
                           <path d="m4 12 5 5L20 6" />
@@ -404,9 +427,10 @@ export default function AdminDashboard() {
                       <button
                         onClick={() => suivre(c, "relance")}
                         disabled={enCours === c.id}
+                        title={c.relanceAt ? "Annuler ce marquage" : "Marquer comme à recontacter"}
                         className={`flex items-center gap-1 rounded-lg border px-2 py-1 text-[11px] font-semibold transition disabled:opacity-40 ${
                           c.relanceAt
-                            ? "border-amber-300 bg-amber-50 text-amber-800"
+                            ? "border-amber-500 bg-amber-500 text-white"
                             : "border-leaf-200 text-leaf-800 hover:border-amber-400 hover:bg-amber-50"
                         }`}
                       >
@@ -416,11 +440,15 @@ export default function AdminDashboard() {
                         </svg>
                         À recontacter
                       </button>
-                      {c.relanceAt && (
+                      {c.contacteAt ? (
+                        <span className="text-[11px] font-semibold text-leaf-700">
+                          contacté le {dateHeure(c.contacteAt)}
+                        </span>
+                      ) : c.relanceAt ? (
                         <span className="text-[11px] text-amber-700">
                           essai du {dateHeure(c.relanceAt)}
                         </span>
-                      )}
+                      ) : null}
                     </div>
                   </li>
                 );
