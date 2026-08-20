@@ -47,16 +47,21 @@ export async function GET() {
       }),
       prisma.document.findMany({ select: { type: true, date: true, status: true, itemsJson: true } }),
       // Demandes que personne n'a encore prises en main : ni affaire, ni
-      // rendez-vous, arrivées il y a plus de 24 h. C'est la liste qui garantit
+      // rendez-vous, ni marquées « déjà contacté ». C'est la liste qui garantit
       // qu'aucun prospect ne se perd.
+      //
+      // Le filtre « arrivé il y a plus de 24 h » a été retiré : à l'import des
+      // prospects Meta, 101 fiches créées le jour même restaient invisibles ici
+      // — exactement celles qu'il fallait rappeler. C'est le gérant qui décide
+      // quand un lead sort de la liste, pas l'horloge.
       prisma.contact.findMany({
         where: {
-          createdAt: { lt: new Date(Date.now() - 24 * 3600_000) },
+          contacteAt: null,
           affaires: { none: {} },
           bookings: { none: {} },
         },
         orderBy: { createdAt: "asc" },
-        take: 8,
+        take: 12,
         select: {
           id: true,
           firstName: true,
@@ -110,6 +115,10 @@ export async function GET() {
       ? Math.round(((nouveauxCeMois - nouveauxMoisPrec) / nouveauxMoisPrec) * 100)
       : null;
 
+  const aTraiterTotal = await prisma.contact.count({
+    where: { contacteAt: null, affaires: { none: {} }, bookings: { none: {} } },
+  });
+
   const aTraiter = aTraiterBruts.map(({ interactions, notes, ...c }) => ({
     ...c,
     // Une seule ligne : le journal complet est sur la fiche du client.
@@ -131,6 +140,7 @@ export async function GET() {
     },
     mois,
     aTraiter,
+    aTraiterTotal,
     prochains: prochains.map((b) => ({
       ...b,
       jour: b.startAt ? utcToParis(b.startAt).date : "",

@@ -134,6 +134,9 @@ model Contact {
   city         String   @default("")
   // web | manual | meta | phone | recommandation
   origine      String   @default("web")
+  // Marqué « déjà contacté » depuis le tableau de bord : le lead sort de la
+  // liste des choses à faire sans qu'il faille lui inventer un rendez-vous.
+  contacteAt   DateTime?
   agenceId     String?
   agence       Agence?  @relation(fields: [agenceId], references: [id], onDelete: SetNull)
   notes        String   @default("")
