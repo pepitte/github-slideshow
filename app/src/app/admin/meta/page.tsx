@@ -203,6 +203,15 @@ export default function AdminMetaPage() {
         <p className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{erreur}</p>
       )}
 
+      {s.webhookUrl.includes("localhost") && (
+        <p className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+          Les adresses ci-dessous pointent vers <b>localhost</b> : la variable
+          <b> NEXT_PUBLIC_APP_URL</b> n&apos;est pas renseignée sur Vercel. Mettez-y l&apos;adresse
+          publique du site (par exemple <span className="font-mono">https://arborispaysage.eu</span>)
+          avant de les recopier chez Facebook, sinon la connexion échouera.
+        </p>
+      )}
+
       <div className="space-y-6">
         {/* 1. Application Meta */}
         <section className="card space-y-3">
