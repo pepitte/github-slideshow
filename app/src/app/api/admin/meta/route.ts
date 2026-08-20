@@ -3,13 +3,17 @@ import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { isAdminAuthenticated } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
-import { appUrl } from "@/lib/templates";
+import { headers } from "next/headers";
+import { requestBaseUrl } from "@/lib/templates";
 import { metaRedirectUri } from "@/lib/meta";
 
 export const dynamic = "force-dynamic";
 
 /** État de la connexion Meta — aucun jeton n'est renvoyé au navigateur. */
 async function status() {
+  // Les adresses montrées doivent être celles du domaine consulté : c'est
+  // celui-là que Facebook doit autoriser et appeler.
+  const site = requestBaseUrl(headers());
   const s = await getSettings();
   const [leads, aTraiter] = await Promise.all([
     prisma.lead.findMany({ orderBy: { createdAt: "desc" }, take: 100 }),
@@ -26,10 +30,10 @@ async function status() {
     connectedAt: s.metaConnectedAt,
     leadsEnabled: s.metaLeadsEnabled,
     verifyToken: s.metaVerifyToken,
-    webhookUrl: `${appUrl()}/api/meta/webhook`,
+    webhookUrl: `${site}/api/meta/webhook`,
     // Facebook refuse la connexion si cette adresse n'est pas déclarée dans
     // « Facebook Login → Valid OAuth Redirect URIs » : il faut la montrer.
-    redirectUri: metaRedirectUri(appUrl()),
+    redirectUri: metaRedirectUri(site),
     leads,
     aTraiter,
   };

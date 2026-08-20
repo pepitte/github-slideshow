@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { isAdminAuthenticated } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
 import { exchangeCodeForToken, listPages, subscribePageToLeads } from "@/lib/meta";
-import { appUrl } from "@/lib/templates";
+import { requestBaseUrl } from "@/lib/templates";
 
 export const dynamic = "force-dynamic";
 
@@ -12,9 +12,11 @@ export const dynamic = "force-dynamic";
 // Si le compte n'a qu'une seule page, elle est reliée automatiquement ;
 // sinon le gérant choisit dans la liste.
 export async function GET(req: NextRequest) {
-  const base = `${appUrl()}/admin/meta`;
+  // Même domaine qu'au départ : c'est ce qui garde la session et le jeton.
+  const site = requestBaseUrl(req.headers);
+  const base = `${site}/admin/meta`;
   if (!isAdminAuthenticated()) {
-    return NextResponse.redirect(`${appUrl()}/admin/login`);
+    return NextResponse.redirect(`${site}/admin/login`);
   }
   const code = req.nextUrl.searchParams.get("code");
   const state = req.nextUrl.searchParams.get("state");
@@ -25,7 +27,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const settings = await getSettings();
-    const userToken = await exchangeCodeForToken(settings, appUrl(), code);
+    const userToken = await exchangeCodeForToken(settings, site, code);
     const pages = await listPages(userToken);
 
     const data: Record<string, unknown> = { metaUserToken: userToken, metaConnectedAt: new Date() };
