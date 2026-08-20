@@ -5,6 +5,7 @@
 // ligne s'ouvre sur la fiche complète (coordonnées, RDV, journal des échanges).
 import { Fragment, useEffect, useState } from "react";
 import FicheContact from "./FicheContact";
+import AddressAutocomplete, { type AddressValue } from "@/components/AddressAutocomplete";
 import { telFr } from "@/lib/rdvLabels";
 
 export type Contact = {
@@ -120,6 +121,7 @@ export default function AdminClientsPage() {
     lastName: "",
     phone: "",
     email: "",
+    address: "",
     postalCode: "",
     city: "",
     note: "",
@@ -173,7 +175,10 @@ export default function AdminClientsPage() {
     });
     if (res.ok) {
       setNouveau(false);
-      setBrouillon({ firstName: "", lastName: "", phone: "", email: "", postalCode: "", city: "", note: "" });
+      setBrouillon({
+        firstName: "", lastName: "", phone: "", email: "",
+        address: "", postalCode: "", city: "", note: "",
+      });
       charger();
     }
   }
@@ -230,8 +235,6 @@ export default function AdminClientsPage() {
                 ["lastName", "Nom"],
                 ["phone", "Téléphone"],
                 ["email", "Email"],
-                ["postalCode", "Code postal"],
-                ["city", "Ville"],
               ] as const
             ).map(([champ, libelle]) => (
               <input
@@ -243,6 +246,18 @@ export default function AdminClientsPage() {
               />
             ))}
           </div>
+          {/* Adresse complète, saisie d'un bloc : le même champ que le tunnel
+              de réservation, qui remplit code postal et ville tout seul. */}
+          <AddressAutocomplete
+            label="Adresse"
+            optional
+            value={{
+              address: brouillon.address,
+              postalCode: brouillon.postalCode,
+              city: brouillon.city,
+            }}
+            onChange={(v: AddressValue) => setBrouillon({ ...brouillon, ...v })}
+          />
           <textarea
             className="input"
             rows={2}
