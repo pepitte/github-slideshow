@@ -61,10 +61,19 @@ export async function GET() {
           id: true,
           firstName: true,
           lastName: true,
+          phone: true,
           origine: true,
           city: true,
           createdAt: true,
           notes: true,
+          // Le premier message reçu dit ce que le prospect demande : c'est
+          // cette phrase que le gérant lit pour décider quoi faire.
+          interactions: {
+            where: { sens: "entrant" },
+            orderBy: { createdAt: "asc" },
+            take: 1,
+            select: { contenu: true },
+          },
         },
       }),
       prisma.booking.findMany({
@@ -101,8 +110,11 @@ export async function GET() {
       ? Math.round(((nouveauxCeMois - nouveauxMoisPrec) / nouveauxMoisPrec) * 100)
       : null;
 
-  const aTraiter = aTraiterBruts.map((c) => ({
+  const aTraiter = aTraiterBruts.map(({ interactions, notes, ...c }) => ({
     ...c,
+    // Une seule ligne : le journal complet est sur la fiche du client.
+    demande:
+      (interactions[0]?.contenu ?? notes ?? "").split("\n")[0].trim() || c.city || "",
     jours: Math.max(
       0,
       Math.floor((Date.now() - new Date(c.createdAt).getTime()) / 86400000)
