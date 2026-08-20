@@ -71,6 +71,7 @@ export async function GET() {
           city: true,
           createdAt: true,
           notes: true,
+          relanceAt: true,
           // Le premier message reçu dit ce que le prospect demande : c'est
           // cette phrase que le gérant lit pour décider quoi faire.
           interactions: {
