@@ -70,6 +70,12 @@ export default function FicheContact({
   const [message, setMessage] = useState("");
   const [type, setType] = useState("appel");
   const [enregistre, setEnregistre] = useState(false);
+  // Ligne du journal en cours de correction (une seule à la fois). Déclaré ici,
+  // avec les autres : un hook placé après le « return » de chargement change le
+  // nombre de hooks entre deux rendus et React refuse de rendre la fiche.
+  const [editId, setEditId] = useState("");
+  const [editTexte, setEditTexte] = useState("");
+  const [editType, setEditType] = useState("note");
 
   useEffect(() => {
     fetch(`/api/admin/contacts/${id}`)
@@ -90,6 +96,22 @@ export default function FicheContact({
     setEnregistre(true);
     setTimeout(() => setEnregistre(false), 1500);
     onChange();
+  }
+
+  async function enregistrerEchange(echangeId: string) {
+    const contenu = editTexte.trim();
+    if (!contenu) return;
+    const res = await fetch(`/api/admin/contacts/${id}/echanges/${echangeId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contenu, type: editType }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setD((c) => (c ? { ...c, interactions: data.interactions } : c));
+      setEditId("");
+      onChange();
+    }
   }
 
   async function ajouterEchange() {
@@ -243,8 +265,57 @@ export default function FicheContact({
                   {TYPES_INTERACTION[i.type] ?? i.type} · {quand(i.createdAt)}
                   {i.auteur ? ` · ${i.auteur}` : ""}
                 </span>
-                <br />
-                <span className="text-leaf-800/90">{i.contenu}</span>
+                {editId === i.id ? (
+                  <div className="mt-1 flex flex-col gap-2 sm:flex-row">
+                    <select
+                      className="input !w-auto !py-1.5"
+                      value={editType}
+                      onChange={(e) => setEditType(e.target.value)}
+                    >
+                      {["appel", "email", "sms", "note"].map((t) => (
+                        <option key={t} value={t}>
+                          {TYPES_INTERACTION[t]}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      className="input flex-1 !py-1.5"
+                      value={editTexte}
+                      autoFocus
+                      onChange={(e) => setEditTexte(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") enregistrerEchange(i.id);
+                        if (e.key === "Escape") setEditId("");
+                      }}
+                    />
+                    <button
+                      className="btn-primary !px-3 !py-1.5 text-sm"
+                      onClick={() => enregistrerEchange(i.id)}
+                    >
+                      Enregistrer
+                    </button>
+                    <button
+                      className="btn-secondary !px-3 !py-1.5 text-sm"
+                      onClick={() => setEditId("")}
+                    >
+                      Annuler
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="text-leaf-800/90">{i.contenu}</span>
+                    <button
+                      onClick={() => {
+                        setEditId(i.id);
+                        setEditTexte(i.contenu);
+                        setEditType(["appel", "email", "sms", "note"].includes(i.type) ? i.type : "note");
+                      }}
+                      className="shrink-0 text-xs font-semibold text-leaf-700 underline"
+                    >
+                      Modifier
+                    </button>
+                  </div>
+                )}
               </li>
             ))}
           </ul>
