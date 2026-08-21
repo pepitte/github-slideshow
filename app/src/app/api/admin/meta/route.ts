@@ -30,6 +30,7 @@ async function status() {
     connectedAt: s.metaConnectedAt,
     leadsEnabled: s.metaLeadsEnabled,
     verifyToken: s.metaVerifyToken,
+    webhookAt: s.metaWebhookAt,
     webhookUrl: `${site}/api/meta/webhook`,
     // Facebook refuse la connexion si cette adresse n'est pas déclarée dans
     // « Facebook Login → Valid OAuth Redirect URIs » : il faut la montrer.
