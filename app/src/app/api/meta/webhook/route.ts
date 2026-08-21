@@ -4,6 +4,11 @@ import { fetchLead, parseLead, saveLead, verifySignature } from "@/lib/meta";
 import { notifyOwnerNewLead } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
 
+/** Trace du dernier appel de Facebook : le seul moyen de savoir si le lien existe. */
+async function noterSignal() {
+  await prisma.settings.updateMany({ data: { metaWebhookAt: new Date() } });
+}
+
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
@@ -16,6 +21,7 @@ export async function GET(req: NextRequest) {
     settings.metaVerifyToken &&
     p.get("hub.verify_token") === settings.metaVerifyToken
   ) {
+    await noterSignal();
     return new NextResponse(p.get("hub.challenge") ?? "", {
       status: 200,
       headers: { "Content-Type": "text/plain" },
@@ -32,6 +38,7 @@ export async function POST(req: NextRequest) {
   if (!verifySignature(raw, req.headers.get("x-hub-signature-256"), settings.metaAppSecret)) {
     return NextResponse.json({ error: "Signature invalide" }, { status: 401 });
   }
+  await noterSignal();
   if (!settings.metaLeadsEnabled) return NextResponse.json({ ok: true });
 
   let body: {

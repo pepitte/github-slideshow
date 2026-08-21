@@ -30,6 +30,7 @@ type Status = {
   connectedAt: string | null;
   leadsEnabled: boolean;
   verifyToken: string;
+  webhookAt: string | null;
   webhookUrl: string;
   redirectUri: string;
   leads: Lead[];
@@ -366,6 +367,22 @@ export default function AdminMetaPage() {
           </p>
           <Copiable label="URL de rappel" value={s.webhookUrl} />
           <Copiable label="Jeton de vérification" value={s.verifyToken || "— enregistrez l'étape 1"} />
+
+          {/* Sans ce repère, une étape 3 oubliée ne se voit nulle part : la page
+              affiche « connecté » et les prospects n'arrivent jamais. */}
+          {s.webhookAt ? (
+            <p className="rounded-xl bg-leaf-50 px-4 py-3 text-sm text-leaf-800">
+              ✓ Facebook a bien joint le site — dernier signal le{" "}
+              <b>{new Date(s.webhookAt).toLocaleString("fr-FR")}</b>.
+            </p>
+          ) : (
+            <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              <b>Facebook n&apos;a encore jamais joint le site.</b> Tant que les deux valeurs
+              ci-dessus ne sont pas déclarées dans votre application (produit Webhooks, objet
+              Page, champ <b>leadgen</b>), les nouveaux prospects n&apos;arriveront pas tout
+              seuls — il faut cliquer sur « Importer les prospects existants ».
+            </p>
+          )}
         </section>
 
         {/* 4. Prospects reçus */}

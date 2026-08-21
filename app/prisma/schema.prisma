@@ -72,6 +72,10 @@ model Settings {
   // Jeton de vérification à recopier dans le tableau de bord Meta
   metaVerifyToken   String   @default("")
   metaLeadsEnabled  Boolean  @default(true)
+  // Dernier signal reçu de Facebook sur /api/meta/webhook. Vide = l'URL de
+  // rappel n'a jamais été déclarée dans l'application Meta : les prospects ne
+  // peuvent pas arriver tout seuls, et rien ne le disait à l'écran.
+  metaWebhookAt     DateTime?
   // Clé de la porte d'entrée « simple » : Zapier / Make y poste les prospects
   // sans passer par la validation d'application Meta.
   leadsApiKey       String   @default("")
