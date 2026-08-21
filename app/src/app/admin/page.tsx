@@ -343,8 +343,8 @@ export default function AdminDashboard() {
             </Link>
           </div>
           <p className="text-sm text-leaf-800/60">
-            Sans rendez-vous ni devis. Les lignes vertes sont faites, elles
-            disparaissent au bout de 24 h.
+            Les plus récents d'abord, sans rendez-vous ni devis. Les lignes
+            vertes sont faites, elles disparaissent au bout de 24 h.
           </p>
 
           {aTraiter.length === 0 ? (

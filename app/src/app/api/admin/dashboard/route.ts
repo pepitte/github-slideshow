@@ -64,7 +64,12 @@ export async function GET() {
           affaires: { none: {} },
           bookings: { none: {} },
         },
-        orderBy: { createdAt: "asc" },
+        // Les plus récents d'abord. En triant du plus ancien au plus récent,
+        // les 92 leads importés occupaient les douze places et un prospect
+        // arrivé le matin même se retrouvait en position 90, invisible — alors
+        // que c'est lui qu'il faut rappeler tout de suite. L'ancienneté en
+        // rouge reste là pour signaler ceux qui traînent.
+        orderBy: { createdAt: "desc" },
         take: 12,
         select: {
           id: true,
