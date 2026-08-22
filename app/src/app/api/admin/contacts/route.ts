@@ -3,13 +3,14 @@ import { prisma } from "@/lib/prisma";
 import { isAdminAuthenticated } from "@/lib/auth";
 import { creerOuCompleterContact, journaliser, phoneKeyOf } from "@/lib/contacts";
 import { estGagnee, estPerdue } from "@/lib/pipeline";
+import { cpAutour } from "@/lib/geo";
 
 export const dynamic = "force-dynamic";
 
 const MAX_RESULTATS = 200;
 
 /**
- * GET /api/admin/contacts?q=&origine=&agence=&statut=&cp= — la base
+ * GET /api/admin/contacts?q=&origine=&agence=&statut=&centre=&rayon= — la base
  * « Tous les clients ».
  * Recherche serveur sur nom, téléphone, email, ville et code postal.
  *
@@ -26,11 +27,13 @@ export async function GET(req: NextRequest) {
   const q = (p.get("q") ?? "").trim();
   const origine = (p.get("origine") ?? "").trim();
   const agenceId = (p.get("agence") ?? "").trim();
-  // Onglets du tableau : une étape du pipeline, ou un secteur par préfixe de
-  // code postal. Le préfixe plutôt que l'agence, parce qu'un secteur se lit
-  // dans le code postal du client même quand aucune agence n'est configurée.
+  // Onglets du tableau : une étape du pipeline, ou un secteur géographique.
+  // Le secteur est un vrai cercle autour d'une ville, pas un département :
+  // Béziers à 40 km déborde sur l'Aude et s'arrête avant Montpellier.
   const statut = (p.get("statut") ?? "").trim();
-  const cp = (p.get("cp") ?? "").trim();
+  const centre = (p.get("centre") ?? "").trim();
+  const rayon = Math.min(300, Math.max(1, Number(p.get("rayon")) || 40));
+  const codesDuSecteur = centre ? cpAutour(centre, rayon) : [];
 
   const contient = { contains: q, mode: "insensitive" as const };
   const where = {
@@ -52,7 +55,7 @@ export async function GET(req: NextRequest) {
       origine ? { origine } : {},
       agenceId ? { agenceId } : {},
       statut ? { affaires: { some: { statut } } } : {},
-      cp ? { postalCode: { startsWith: cp } } : {},
+      centre ? { postalCode: { in: codesDuSecteur } } : {},
     ],
   };
 
