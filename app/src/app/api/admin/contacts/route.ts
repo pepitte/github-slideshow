@@ -9,7 +9,8 @@ export const dynamic = "force-dynamic";
 const MAX_RESULTATS = 200;
 
 /**
- * GET /api/admin/contacts?q=&origine=&agence= — la base « Tous les clients ».
+ * GET /api/admin/contacts?q=&origine=&agence=&statut=&cp= — la base
+ * « Tous les clients ».
  * Recherche serveur sur nom, téléphone, email, ville et code postal.
  *
  * Chaque ligne est enrichie de ce que le gérant veut voir d'un coup d'œil :
@@ -25,6 +26,11 @@ export async function GET(req: NextRequest) {
   const q = (p.get("q") ?? "").trim();
   const origine = (p.get("origine") ?? "").trim();
   const agenceId = (p.get("agence") ?? "").trim();
+  // Onglets du tableau : une étape du pipeline, ou un secteur par préfixe de
+  // code postal. Le préfixe plutôt que l'agence, parce qu'un secteur se lit
+  // dans le code postal du client même quand aucune agence n'est configurée.
+  const statut = (p.get("statut") ?? "").trim();
+  const cp = (p.get("cp") ?? "").trim();
 
   const contient = { contains: q, mode: "insensitive" as const };
   const where = {
@@ -45,6 +51,8 @@ export async function GET(req: NextRequest) {
         : {},
       origine ? { origine } : {},
       agenceId ? { agenceId } : {},
+      statut ? { affaires: { some: { statut } } } : {},
+      cp ? { postalCode: { startsWith: cp } } : {},
     ],
   };
 
