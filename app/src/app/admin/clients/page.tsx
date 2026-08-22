@@ -100,6 +100,21 @@ const ICONES = {
   ),
 };
 
+/**
+ * Onglets du tableau. Les secteurs se lisent dans le code postal du client
+ * (34 = Hérault, 33 = Gironde) : ça fonctionne sans avoir à créer d'agences,
+ * et le filtre « Tous secteurs » reste disponible pour qui en a configuré.
+ */
+const ONGLETS: { id: string; label: string; statut?: string; cp?: string }[] = [
+  { id: "tous", label: "Tous" },
+  { id: "attente", label: "En attente de devis", statut: "devis_a_faire" },
+  { id: "envoye", label: "Devis envoyé", statut: "devis_envoye" },
+  { id: "en_cours", label: "Chantiers en cours", statut: "chantier_en_cours" },
+  { id: "termines", label: "Chantiers terminés", statut: "termine" },
+  { id: "beziers", label: "Béziers et alentours", cp: "34" },
+  { id: "bordeaux", label: "Bordeaux et alentours", cp: "33" },
+];
+
 export default function AdminClientsPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [stats, setStats] = useState<Stats>({ total: 0, actifs: 0, perdus: 0, caTotal: 0 });
@@ -108,6 +123,7 @@ export default function AdminClientsPage() {
   const [chargement, setChargement] = useState(true);
   const [q, setQ] = useState("");
   const [agence, setAgence] = useState("");
+  const [onglet, setOnglet] = useState("tous");
   const [ouvert, setOuvert] = useState<string | null>(null);
   const [nouveau, setNouveau] = useState(false);
   const [majStatut, setMajStatut] = useState("");
@@ -126,6 +142,9 @@ export default function AdminClientsPage() {
     const p = new URLSearchParams();
     if (q.trim()) p.set("q", q.trim());
     if (agence) p.set("agence", agence);
+    const o = ONGLETS.find((x) => x.id === onglet);
+    if (o?.statut) p.set("statut", o.statut);
+    if (o?.cp) p.set("cp", o.cp);
     fetch(`/api/admin/contacts?${p.toString()}`)
       .then((r) => {
         if (r.status === 401) {
@@ -160,7 +179,7 @@ export default function AdminClientsPage() {
     const t = setTimeout(charger, 300);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q, agence]);
+  }, [q, agence, onglet]);
 
   /**
    * Suivi commercial depuis la liste. La vérité vit dans l'affaire du client :
@@ -239,6 +258,23 @@ export default function AdminClientsPage() {
         </button>
       </div>
 
+      {/* Onglets : les tris du quotidien, à un clic. */}
+      <div className="mb-4 flex flex-wrap gap-1.5">
+        {ONGLETS.map((o) => (
+          <button
+            key={o.id}
+            onClick={() => setOnglet(o.id)}
+            className={`rounded-full px-3 py-1.5 text-sm font-semibold transition ${
+              onglet === o.id
+                ? "bg-leaf-600 text-white"
+                : "bg-white text-leaf-800/70 ring-1 ring-inset ring-leaf-200 hover:bg-leaf-50"
+            }`}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+
       {nouveau && (
         <div className="card mb-4 space-y-2 border-2 border-leaf-300">
           <p className="font-semibold">Nouveau client</p>
@@ -300,7 +336,7 @@ export default function AdminClientsPage() {
 
       {!chargement && contacts.length === 0 && (
         <div className="card py-8 text-center text-sm text-leaf-800/60">
-          {q || agence ? (
+          {q || agence || onglet !== "tous" ? (
             "Aucun client ne correspond."
           ) : (
             <>
