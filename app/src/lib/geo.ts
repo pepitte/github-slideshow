@@ -24,3 +24,22 @@ export function distanceKm(
     Math.cos((a.lat * Math.PI) / 180) * Math.cos((b.lat * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(s));
 }
+
+/**
+ * Les codes postaux situés dans un rayon donné autour d'un autre. Sert aux
+ * onglets par secteur : « Béziers et alentours » n'est pas le département 34,
+ * c'est bien un cercle de 40 km — qui déborde sur l'Aude et s'arrête avant
+ * Montpellier.
+ *
+ * La table est parcourue en entier (6 188 entrées) : c'est instantané, et ça
+ * évite d'entretenir une liste de codes postaux à la main.
+ */
+export function cpAutour(centre: string, rayonKm: number): string[] {
+  const depart = cpToLatLng(centre);
+  if (!depart) return [];
+  const dedans: string[] = [];
+  for (const [cp, [lat, lng]] of Object.entries(CP_GPS)) {
+    if (distanceKm(depart, { lat, lng }) <= rayonKm) dedans.push(cp);
+  }
+  return dedans;
+}

@@ -100,19 +100,22 @@ const ICONES = {
   ),
 };
 
+const RAYON_SECTEUR = 40;
+
 /**
- * Onglets du tableau. Les secteurs se lisent dans le code postal du client
- * (34 = Hérault, 33 = Gironde) : ça fonctionne sans avoir à créer d'agences,
- * et le filtre « Tous secteurs » reste disponible pour qui en a configuré.
+ * Onglets du tableau. Un secteur est un vrai cercle de 40 km autour de la
+ * ville, calculé à partir du code postal du client — pas un département :
+ * Narbonne est à 28 km de Béziers mais dans l'Aude, Montpellier est dans
+ * l'Hérault mais à 59 km.
  */
-const ONGLETS: { id: string; label: string; statut?: string; cp?: string }[] = [
+const ONGLETS: { id: string; label: string; statut?: string; centre?: string }[] = [
   { id: "tous", label: "Tous" },
   { id: "attente", label: "En attente de devis", statut: "devis_a_faire" },
   { id: "envoye", label: "Devis envoyé", statut: "devis_envoye" },
   { id: "en_cours", label: "Chantiers en cours", statut: "chantier_en_cours" },
   { id: "termines", label: "Chantiers terminés", statut: "termine" },
-  { id: "beziers", label: "Béziers et alentours", cp: "34" },
-  { id: "bordeaux", label: "Bordeaux et alentours", cp: "33" },
+  { id: "beziers", label: "Béziers et alentours", centre: "34500" },
+  { id: "bordeaux", label: "Bordeaux et alentours", centre: "33000" },
 ];
 
 export default function AdminClientsPage() {
@@ -144,7 +147,10 @@ export default function AdminClientsPage() {
     if (agence) p.set("agence", agence);
     const o = ONGLETS.find((x) => x.id === onglet);
     if (o?.statut) p.set("statut", o.statut);
-    if (o?.cp) p.set("cp", o.cp);
+    if (o?.centre) {
+      p.set("centre", o.centre);
+      p.set("rayon", String(RAYON_SECTEUR));
+    }
     fetch(`/api/admin/contacts?${p.toString()}`)
       .then((r) => {
         if (r.status === 401) {
