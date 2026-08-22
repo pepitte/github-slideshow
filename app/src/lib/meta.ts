@@ -153,7 +153,11 @@ const FIELD_ALIASES: Record<string, string[]> = {
   name: ["full_name", "nom_complet", "name", "nom", "prenom", "prénom"],
   phone: ["phone_number", "telephone", "téléphone", "tel", "numero", "numéro", "phone"],
   email: ["email", "e_mail", "courriel", "mail"],
-  postalCode: ["post_code", "postal_code", "zip_code", "code_postal", "cp", "postcode"],
+  postalCode: ["post_code", "postal_code", "zip_code", "code_postal", "cp", "postcode", "zip"],
+  // La ville n'était pas lue : un formulaire qui la demande voyait sa réponse
+  // jetée, et le client se retrouvait sans localisation donc sans secteur.
+  city: ["city", "ville", "commune", "localite", "localité", "town"],
+  address: ["street_address", "adresse", "address", "rue"],
   message: ["message", "projet", "besoin", "commentaire", "precisions", "précisions"],
 };
 
@@ -180,6 +184,8 @@ export function parseLead(lead: MetaLead, formName = "") {
     phone: pick(fields, FIELD_ALIASES.phone),
     email: pick(fields, FIELD_ALIASES.email),
     postalCode: pick(fields, FIELD_ALIASES.postalCode),
+    city: pick(fields, FIELD_ALIASES.city),
+    address: pick(fields, FIELD_ALIASES.address),
     message: pick(fields, FIELD_ALIASES.message),
     formName,
     adName: lead.ad_name ?? "",
@@ -189,22 +195,33 @@ export function parseLead(lead: MetaLead, formName = "") {
   };
 }
 
-/** Enregistre un prospect Meta, sans jamais créer de doublon. */
+/**
+ * Enregistre un prospect Meta, sans jamais créer de doublon.
+ *
+ * Un prospect déjà connu ne crée rien, mais sa fiche client est tout de même
+ * complétée : les premiers imports ne lisaient ni la ville ni l'adresse, et
+ * `creerOuCompleterContact` ne remplace jamais une valeur remplie par du vide.
+ * Relancer l'import récupère donc ce qui avait été laissé de côté.
+ */
 export async function saveLead(parsed: ReturnType<typeof parseLead>): Promise<boolean> {
   const existing = await prisma.lead.findFirst({ where: { externalId: parsed.externalId } });
-  if (existing) return false;
   const { createdAt, ...rest } = parsed;
-  await prisma.lead.create({
-    data: { ...rest, source: "meta", ...(createdAt ? { createdAt } : {}) },
-  });
+  if (!existing) {
+    await prisma.lead.create({
+      data: { ...rest, source: "meta", ...(createdAt ? { createdAt } : {}) },
+    });
+  }
   // Les prospects publicitaires entrent aussi dans la base globale.
   const contact = await creerOuCompleterContact({
     ...splitNom(rest.name),
     phone: rest.phone,
     email: rest.email,
+    address: rest.address,
     postalCode: rest.postalCode,
+    city: rest.city,
     origine: "meta",
   });
+  if (existing) return false;
   await journaliser(
     contact.id,
     "note",

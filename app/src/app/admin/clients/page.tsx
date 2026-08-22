@@ -108,14 +108,14 @@ const RAYON_SECTEUR = 40;
  * Narbonne est à 28 km de Béziers mais dans l'Aude, Montpellier est dans
  * l'Hérault mais à 59 km.
  */
-const ONGLETS: { id: string; label: string; statut?: string; centre?: string }[] = [
+const ONGLETS: { id: string; label: string; statut?: string; centre?: string; ville?: string }[] = [
   { id: "tous", label: "Tous" },
   { id: "attente", label: "En attente de devis", statut: "devis_a_faire" },
   { id: "envoye", label: "Devis envoyé", statut: "devis_envoye" },
   { id: "en_cours", label: "Chantiers en cours", statut: "chantier_en_cours" },
   { id: "termines", label: "Chantiers terminés", statut: "termine" },
-  { id: "beziers", label: "Béziers et alentours", centre: "34500" },
-  { id: "bordeaux", label: "Bordeaux et alentours", centre: "33000" },
+  { id: "beziers", label: "Béziers et alentours", centre: "34500", ville: "Béziers" },
+  { id: "bordeaux", label: "Bordeaux et alentours", centre: "33000", ville: "Bordeaux" },
 ];
 
 export default function AdminClientsPage() {
@@ -130,6 +130,7 @@ export default function AdminClientsPage() {
   const [ouvert, setOuvert] = useState<string | null>(null);
   const [nouveau, setNouveau] = useState(false);
   const [majStatut, setMajStatut] = useState("");
+  const [sansLieu, setSansLieu] = useState(0);
   const [brouillon, setBrouillon] = useState({
     firstName: "",
     lastName: "",
@@ -150,6 +151,7 @@ export default function AdminClientsPage() {
     if (o?.centre) {
       p.set("centre", o.centre);
       p.set("rayon", String(RAYON_SECTEUR));
+      if (o.ville) p.set("ville", o.ville);
     }
     fetch(`/api/admin/contacts?${p.toString()}`)
       .then((r) => {
@@ -163,6 +165,7 @@ export default function AdminClientsPage() {
         setContacts(d.contacts ?? []);
         setStats(d.stats ?? { total: 0, actifs: 0, perdus: 0, caTotal: 0 });
         setTronque(Boolean(d.tronque));
+        setSansLieu(d.sansLieu ?? 0);
       })
       .catch(() => {})
       .finally(() => setChargement(false));
@@ -280,6 +283,17 @@ export default function AdminClientsPage() {
           </button>
         ))}
       </div>
+
+      {/* Un secteur ne peut classer que ce qu'il sait situer. Le dire ici évite
+          de chercher longtemps pourquoi un client connu n'apparaît pas. */}
+      {ONGLETS.find((o) => o.id === onglet)?.centre && sansLieu > 0 && (
+        <p className="mb-4 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          <b>{sansLieu} client(s) sans ville ni code postal</b> n&apos;apparaissent dans aucun
+          secteur — vos formulaires publicitaires ne demandent pas l&apos;adresse. Ouvrez leur
+          fiche pour la renseigner, ou ajoutez la question « code postal » à votre formulaire
+          Meta pour les prochains.
+        </p>
+      )}
 
       {nouveau && (
         <div className="card mb-4 space-y-2 border-2 border-leaf-300">

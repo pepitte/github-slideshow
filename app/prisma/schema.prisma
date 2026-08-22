@@ -399,6 +399,10 @@ model Lead {
   phone      String
   email      String   @default("")
   postalCode String
+  // Ville et adresse quand le formulaire les demande : sans elles, un prospect
+  // ne peut être rattaché à aucun secteur.
+  city       String   @default("")
+  address    String   @default("")
   message    String   @default("")
   source     String   @default("site") // site | meta
   // Identifiant du lead chez Meta : sert à écarter les doublons (webhook + import).

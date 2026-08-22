@@ -34,6 +34,14 @@ export async function GET(req: NextRequest) {
   const centre = (p.get("centre") ?? "").trim();
   const rayon = Math.min(300, Math.max(1, Number(p.get("rayon")) || 40));
   const codesDuSecteur = centre ? cpAutour(centre, rayon) : [];
+  const villeCentre = (p.get("ville") ?? "").trim();
+  // « Béziers » et « beziers » désignent la même ville : on cherche les deux
+  // formes, PostgreSQL ignorant la casse mais pas les accents.
+  const villesCherchees = villeCentre
+    ? Array.from(
+        new Set([villeCentre, villeCentre.normalize("NFD").replace(/[\u0300-\u036f]/g, "")])
+      )
+    : [];
 
   const contient = { contains: q, mode: "insensitive" as const };
   const where = {
@@ -55,7 +63,18 @@ export async function GET(req: NextRequest) {
       origine ? { origine } : {},
       agenceId ? { agenceId } : {},
       statut ? { affaires: { some: { statut } } } : {},
-      centre ? { postalCode: { in: codesDuSecteur } } : {},
+      // Le code postal d'abord, la ville en secours : un prospect publicitaire
+      // qui n'a laissé que « Béziers » doit quand même sortir dans son secteur.
+      centre
+        ? {
+            OR: [
+              { postalCode: { in: codesDuSecteur } },
+              ...villesCherchees.map((v) => ({
+                city: { contains: v, mode: "insensitive" as const },
+              })),
+            ],
+          }
+        : {},
     ],
   };
 
@@ -147,7 +166,14 @@ export async function GET(req: NextRequest) {
   const nbPerdus = Array.from(resumes.values()).filter((r) => r.perdu).length;
   const caTotal = Array.from(resumes.values()).reduce((acc, r) => acc + r.ca, 0);
 
+  // Un client sans code postal ni ville n'appartient à aucun secteur : le dire
+  // évite de croire que le filtre perd des gens.
+  const sansLieu = await prisma.contact.count({
+    where: { postalCode: "", city: "" },
+  });
+
   return NextResponse.json({
+    sansLieu,
     contacts: contacts.map(({ _count, ...c }) => {
       const r = resumes.get(c.id);
       return {
